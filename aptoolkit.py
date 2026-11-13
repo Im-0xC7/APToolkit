@@ -544,12 +544,17 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     def _onShellFinished(self):
         self.startShellBtn.setEnabled(True)
         self.stopShellBtn.setEnabled(False)
+        self.tabWidget.tabBar().setEnabled(True)
         self.shellInput.returnPressed.disconnect()
         self.log("Shell stopped")
         self.apsh = None
         self.apshSig = None
 
     def startShell(self):
+        self.startShellBtn.setEnabled(False)
+        self.tabWidget.tabBar().setEnabled(False)
+        self.log("Starting shell")
+
         self.apshSig = ShellSignals()
         self.shellInput.returnPressed.connect(self._onShellInput)
         self.apshSig.output.connect(self._onShellOutput)
@@ -557,11 +562,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.apshSig.stopping.connect(self._onShellStopping)
         self.apshSig.finished.connect(self._onShellFinished)
         self.apsh = ShellWorker(self.t, self.apshSig)
-
-        self.startShellBtn.setEnabled(False)
-        self.log("Starting shell")
         self.pool.start(self.apsh)
-
 
     def stopShell(self):
         if self.apsh:
