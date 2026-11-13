@@ -91,6 +91,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         # Shell
         self.startShellBtn.clicked.connect(self.startShell)
         self.stopShellBtn.clicked.connect(self.stopShell)
+        self.clearShellOutputBtn.clicked.connect(self.clearShellOutput)
 
         self.tabWidget.setCurrentIndex(0)
 
@@ -566,6 +567,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         if self.apsh:
             self.stopShellBtn.setEnabled(False)
             self.apsh.stop()
+
+    def clearShellOutput(self):
+        self.shellOutput.clear()
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)

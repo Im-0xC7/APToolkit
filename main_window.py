@@ -307,6 +307,10 @@ class Ui_MainWindow(object):
         self.shellInput.setObjectName(u"shellInput")
         self.shellInput.setGeometry(QRect(130, 230, 690, 25))
         self.shellInput.setFrame(True)
+        self.clearShellOutputBtn = QPushButton(self.shell)
+        self.clearShellOutputBtn.setObjectName(u"clearShellOutputBtn")
+        self.clearShellOutputBtn.setEnabled(True)
+        self.clearShellOutputBtn.setGeometry(QRect(5, 65, 120, 30))
         self.tabWidget.addTab(self.shell, "")
         self.output = QPlainTextEdit(self.centralwidget)
         self.output.setObjectName(u"output")
@@ -444,6 +448,7 @@ class Ui_MainWindow(object):
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.files), QCoreApplication.translate("MainWindow", u"Files", None))
         self.startShellBtn.setText(QCoreApplication.translate("MainWindow", u"Start Shell", None))
         self.stopShellBtn.setText(QCoreApplication.translate("MainWindow", u"Stop Shell", None))
+        self.clearShellOutputBtn.setText(QCoreApplication.translate("MainWindow", u"Clear Output", None))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.shell), QCoreApplication.translate("MainWindow", u"Shell", None))
     # retranslateUi
 
