@@ -1,6 +1,5 @@
 import struct
 import time
-
 import usb
 
 VID, PID = 0x1A84, 0x0121
