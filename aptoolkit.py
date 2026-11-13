@@ -1,8 +1,9 @@
 import os
 import sys
 import posixpath
+import signal
 
-from PySide6.QtCore import Signal, QRunnable, QObject, QThreadPool
+from PySide6.QtCore import Signal, QRunnable, QObject, QThreadPool, QTimer
 from PySide6.QtWidgets import QApplication, QMainWindow, QFileDialog, QMessageBox, QHeaderView, QInputDialog
 from usbmonitor import USBMonitor
 from usbmonitor.attributes import ID_MODEL_ID, ID_VENDOR_ID
@@ -570,4 +571,11 @@ if __name__ == "__main__":
     app = QApplication(sys.argv)
     window = MainWindow()
     window.show()
+
+    signal.signal(signal.SIGINT, lambda *_: window.close())
+    signal.signal(signal.SIGTERM, lambda *_: window.close())
+    sigTimer = QTimer()
+    sigTimer.start(200)
+    sigTimer.timeout.connect(lambda: None)
+
     sys.exit(app.exec())
