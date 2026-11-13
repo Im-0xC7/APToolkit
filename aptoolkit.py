@@ -1,7 +1,6 @@
 import os
 import sys
 import posixpath
-from pathlib import Path
 
 from PySide6.QtCore import Signal, QRunnable, QObject, QThreadPool
 from PySide6.QtWidgets import QApplication, QMainWindow, QFileDialog, QMessageBox, QHeaderView, QInputDialog
@@ -9,7 +8,7 @@ from usbmonitor import USBMonitor
 from usbmonitor.attributes import ID_MODEL_ID, ID_VENDOR_ID
 from datetime import datetime
 
-from apsh.apsh import APShell
+from apsh.apsh import ShellWorker, ShellSignals
 from transport import *
 from filetree import FileTreeController
 
@@ -95,7 +94,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.tabWidget.setCurrentIndex(0)
 
         self.eeprom = None
-        self.apsh = APShell(self, self.t, self.shellInput, self.shellOutput)
+        self.apsh = None
+        self.apshSig = None
 
     def showEvent(self, event):
         for _, info in self.monitor.get_available_devices().items():
@@ -509,25 +509,44 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.renameBtn.setEnabled((isFile or isDir) and writable and not protected)
         self.deleteBtn.setEnabled((isFile or isDir) and writable and not protected)
 
-    def startShell(self):
-        l = self.t.list_dir("../../tmp")
-        if "apsh" not in l or "apsh.sh" not in l:
-            with open(Path(__file__).resolve().parent / "apsh" / "apsh", "rb") as f:
-                if not self.t.put_file(f.read(), "../../tmp/apsh"):
-                    self.log("Failed to push apsh to /tmp")
-                    return
-            with open(Path(__file__).resolve().parent / "apsh" / "apsh.sh", "rb") as f:
-                if not self.t.put_file(f.read(), "../../tmp/apsh.sh"):
-                    self.log("Failed to push apsh.sh to /tmp")
-                    return
-        self.t.send(runtask("about=;sh /tmp/apsh.sh </dev/null >/dev/null 2>&1 &"))
-        self.log(get_stdout(self.t.recv_until_finish()))
+    def _onShellInput(self):
+        msg = self.shellInput.text()
+        self._onShellOutput(msg)
+        self.apshSig.input.emit(b"%s\n" % msg.encode())
+        self.shellInput.clear()
 
-        time.sleep(1.2)
-        self.apsh.start()
+    def _onShellOutput(self, data: str):
+        sb = self.shellOutput.verticalScrollBar()
+        pos = sb.value()
+        mv = pos == sb.maximum()
+        self.shellOutput.setPlainText(self.shellOutput.toPlainText() + data)
+        if mv: sb.setValue(sb.maximum())
+        else: sb.setValue(pos)
+
+    def _onShellStarted(self):
+        self.stopShellBtn.setEnabled(True)
+
+    def _onShellFinished(self):
+        self.startShellBtn.setEnabled(True)
+        self.stopShellBtn.setEnabled(False)
+
+    def startShell(self):
+        self.apshSig = ShellSignals()
+        self.shellInput.returnPressed.connect(self._onShellInput)
+        self.apshSig.output.connect(self._onShellOutput)
+        self.apshSig.started.connect(self._onShellStarted)
+        self.apshSig.finished.connect(self._onShellFinished)
+        self.apsh = ShellWorker(self.t, self.apshSig)
+
+        self.startShellBtn.setEnabled(False)
+        self.pool.start(self.apsh)
 
     def stopShell(self):
-        self.apsh.stop()
+        if self.apsh:
+            self.apsh.stop()
+            self.startShellBtn.setEnabled(True)
+            self.stopShellBtn.setEnabled(False)
+            self.shellInput.returnPressed.disconnect()
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
