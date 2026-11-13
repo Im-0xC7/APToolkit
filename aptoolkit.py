@@ -102,7 +102,13 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.usbConnected(_, info)
 
     def closeEvent(self, event):
+        if self.apsh and not self.apsh.stopped:
+            self.apsh.stop()
+            if not self.pool.waitForDone(8000):
+                self.apsh.stopped = True
+                self.pool.waitForDone(5000)
         self.t.close()
+        event.accept()
 
     def log(self, text):
         self.output.appendPlainText(f"[{datetime.now().strftime('%H:%M:%S')}] {text}")
@@ -511,11 +517,13 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
     def _onShellInput(self):
         msg = self.shellInput.text()
-        self._onShellOutput(msg)
+        self._onShellOutput(f"{msg}\n")
         self.apshSig.input.emit(b"%s\n" % msg.encode())
         self.shellInput.clear()
 
     def _onShellOutput(self, data: str):
+        if not self.shellOutput.toPlainText():
+            data = data.lstrip("\r\n")
         sb = self.shellOutput.verticalScrollBar()
         pos = sb.value()
         mv = pos == sb.maximum()
@@ -525,28 +533,38 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
     def _onShellStarted(self):
         self.stopShellBtn.setEnabled(True)
+        self.log("Shell started")
+
+    def _onShellStopping(self):
+        self.stopShellBtn.setEnabled(False)
+        self.log("Stopping shell")
 
     def _onShellFinished(self):
         self.startShellBtn.setEnabled(True)
         self.stopShellBtn.setEnabled(False)
+        self.shellInput.returnPressed.disconnect()
+        self.log("Shell stopped")
+        self.apsh = None
+        self.apshSig = None
 
     def startShell(self):
         self.apshSig = ShellSignals()
         self.shellInput.returnPressed.connect(self._onShellInput)
         self.apshSig.output.connect(self._onShellOutput)
         self.apshSig.started.connect(self._onShellStarted)
+        self.apshSig.stopping.connect(self._onShellStopping)
         self.apshSig.finished.connect(self._onShellFinished)
         self.apsh = ShellWorker(self.t, self.apshSig)
 
         self.startShellBtn.setEnabled(False)
+        self.log("Starting shell")
         self.pool.start(self.apsh)
+
 
     def stopShell(self):
         if self.apsh:
-            self.apsh.stop()
-            self.startShellBtn.setEnabled(True)
             self.stopShellBtn.setEnabled(False)
-            self.shellInput.returnPressed.disconnect()
+            self.apsh.stop()
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
