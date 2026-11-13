@@ -1,0 +1,538 @@
+import os
+import sys
+import posixpath
+from pathlib import Path
+
+from PySide6.QtCore import Signal, QRunnable, QObject, QThreadPool
+from PySide6.QtWidgets import QApplication, QMainWindow, QFileDialog, QMessageBox, QHeaderView, QInputDialog
+from usbmonitor import USBMonitor
+from usbmonitor.attributes import ID_MODEL_ID, ID_VENDOR_ID
+from datetime import datetime
+
+from apsh.apsh import APShell
+from transport import *
+from filetree import FileTreeController
+
+import ap_serial
+
+from main_window import Ui_MainWindow
+
+class RunTaskSignals(QObject):
+    result = Signal(str)
+    error = Signal(str)
+    finished = Signal()
+
+class RunTaskJob(QRunnable):
+    def __init__(self, cmd: str, t: Transport, sig: RunTaskSignals):
+        super().__init__()
+        self.cmd = cmd
+        self.t = t
+        self.sig = sig
+
+    def run(self):
+        if not self.t.dev:
+            self.sig.error.emit("No device connected")
+            return
+
+        if not self.cmd.startswith("about=;"):
+            self.cmd = "about=;" + self.cmd
+
+        try:
+            self.t.send(runtask(self.cmd))
+            self.sig.result.emit(get_stdout(self.t.recv_until_finish()))
+        except Exception as e:
+            self.sig.error.emit(str(e))
+
+        self.sig.finished.emit()
+
+class MainWindow(QMainWindow, Ui_MainWindow):
+    deviceConnected = Signal(str, object)
+    deviceDisconnected = Signal(str, object)
+
+    def __init__(self):
+        super().__init__()
+        self.setupUi(self)
+
+        self.pool = QThreadPool(self)
+        self.pool.setMaxThreadCount(1)
+
+        self.deviceConnected.connect(self.usbConnected)
+        self.deviceDisconnected.connect(self.usbDisconnected)
+
+        self.monitor = USBMonitor()
+        self.monitor.start_monitoring(
+            lambda _, info: self.deviceConnected.emit(_, info),
+            lambda _, info: self.deviceDisconnected.emit(_, info),
+        )
+
+        self.t = Transport()
+
+        # Identity
+        self.readEEPROMBtn.clicked.connect(self.readEEPROM)
+        self.writeEEPROMBtn.clicked.connect(self.writeEEPROM)
+        self.saveEEPROMBtn.clicked.connect(self.saveEEPROM)
+        self.unmarryBtn.clicked.connect(self.unmarry)
+        self.updateInitSerialBtn.clicked.connect(self.updateInitSerial)
+        self.rebootBtn.clicked.connect(self.reboot)
+
+        # Files
+        hdr = self.fileTreeView.header()
+        hdr.setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
+        hdr.setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)
+        self.fileTree = FileTreeController(self.fileTreeView, self.t, self)
+        self.fileTree.selectionChanged.connect(self.updateFileButtons)
+        self.saveBtn.clicked.connect(self.saveFile)
+        self.uploadBtn.clicked.connect(self.uploadFile)
+        self.createDirBtn.clicked.connect(self.createDir)
+        self.renameBtn.clicked.connect(self.renameFile)
+        self.deleteBtn.clicked.connect(self.deleteFile)
+        self.lastDir = os.path.curdir
+
+        # Shell
+        self.startShellBtn.clicked.connect(self.startShell)
+        self.stopShellBtn.clicked.connect(self.stopShell)
+
+        self.tabWidget.setCurrentIndex(0)
+
+        self.eeprom = None
+        self.apsh = APShell(self, self.t, self.shellInput, self.shellOutput)
+
+    def showEvent(self, event):
+        for _, info in self.monitor.get_available_devices().items():
+            self.usbConnected(_, info)
+
+    def closeEvent(self, event):
+        self.t.close()
+
+    def log(self, text):
+        self.output.appendPlainText(f"[{datetime.now().strftime('%H:%M:%S')}] {text}")
+
+    def usbConnected(self, _, info):
+        if info[ID_VENDOR_ID] == f"{VID:04x}" and info[ID_MODEL_ID] == f"{PID:04x}":
+            self.t.open()
+            self.t.handshake()
+            self.log("Accessport connected")
+            self.fileTree.populate([("/", "../..")])
+
+    def usbDisconnected(self, _, info):
+        if info[ID_VENDOR_ID] == f"{VID:04x}" and info[ID_MODEL_ID] == f"{PID:04x}":
+            self.t.close(False)
+            self.fileTreeView.clear()
+            self.updateFileButtons(None, False, False)
+            self.log("Accessport disconnected")
+
+    def onEEPROMRead(self, out: str):
+        self.eeprom = dict(l.split("=", 1) for l in out.splitlines() if "=" in l)
+        self.updateEEPROMFields()
+        self.log("EEPROM read successfully")
+        self.readEEPROMBtn.setEnabled(True)
+
+    def readEEPROM(self):
+        self.readEEPROMBtn.setEnabled(False)
+
+        sig = RunTaskSignals()
+        sig.result.connect(self.onEEPROMRead)
+        sig.error.connect(self.log)
+        sig.finished.connect(lambda: self.readEEPROMBtn.setEnabled(True))
+        self.pool.start(RunTaskJob("(readeeprom; if [ -e /user/ap-data/user_vin ]; then VIN=$(cat /user/ap-data/user_vin); else VIN=Unknown; fi; echo VIN=$VIN)", self.t, sig))
+
+        # if self.t.dev:
+        #     self.t.send(runtask("about=;readeeprom"))
+        #     self.eeprom = dict(l.split("=", 1) for l in get_stdout(self.t.recv_until_finish()).splitlines() if "=" in l)
+        #     self.updateEEPROMFields()
+        #     self.t.send(runtask("about=;if [ -e /user/ap-data/user_vin ]; then cat /user/ap-data/user_vin; else echo Unknown; fi"))
+        #     self.vin.setText(get_stdout(self.t.recv_until_finish()).splitlines()[0])
+        #     self.log("EEPROM read successfully")
+        # else:
+        #     self.log("No device connected")
+
+    def writeEEPROM(self):
+        if not self.validateEEPROMFields():
+            self.log("Check the highlighted field and try again")
+            return
+
+        if self.t.dev:
+            reply = QMessageBox.question(self, "Confirm EEPROM Write",
+                                         "Are you sure you want to proceed?",
+                                         QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No, QMessageBox.StandardButton.No)
+            if reply == QMessageBox.StandardButton.Yes:
+                command = "about=;writeeeprom --quiet"
+                command += f" -m {self.eeprom["AP_MANUF"]}"
+                command += f" -r {self.eeprom["AP_REGION"]}"
+                command += f" -v {self.eeprom["AP_MODEL"].lstrip("0") or "0"}"
+                command += f" -C {self.eeprom["AP_VENDOR"]}"
+                command += f" -n {self.eeprom["AP_SERIAL"]}"
+                command += f" -g {self.eeprom["AP_UPGR_SERIAL"]}"
+                command += f" -s {self.eeprom["AP_STATE"]}"
+                command += f" -u {self.eeprom["AP_CM1_STATE"]}"
+                command += f" -k {self.eeprom["AP_LOCK"]}"
+                command += f" -p {self.eeprom["AP_CM1_LOCK"]}"
+                command += f" -i {self.eeprom["AP_VEHICLE"]}"
+                command += f" -j {self.eeprom["AP_CM1_VEHICLE"]}"
+                command += f" -{"a" if self.eeprom["AP_FEATURE_TRANS_TUNING"] == 1 else "d"} AP_FEATURE_TRANS_TUNING"
+                command += f";echo RC=$?"
+
+                # self.log(f"command: {command}")
+
+                self.t.send(runtask(command))
+                rc = get_stdout(self.t.recv_until_finish())
+                if "RC=0" in rc:
+                    self.log("EEPROM written successfully")
+                else:
+                    self.log("EEPROM write unsuccessful, check fields and try again")
+        else:
+            self.log("No device connected")
+
+    def saveEEPROM(self):
+        if self.eeprom:
+            path, _ = QFileDialog.getSaveFileName(self, "Save EEPROM File", "eeprom.txt", "Text Files (*.txt);;All Files (*)")
+            if path:
+                with open(path, "w") as f:
+                    f.write("\n".join(f"{k}={v}" for k, v in self.eeprom.items()))
+                self.log(f"EEPROM saved to {path}")
+        else:
+            self.log("No EEPROM loaded")
+
+    def unmarry(self):
+        if not self.t.dev:
+            self.log("No device connected")
+            return
+
+        reply = QMessageBox.question(self, "Confirm Unmarry",
+                                     "Are you sure you want to proceed?\nThis action is irreversible!",
+                                     QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                                     QMessageBox.StandardButton.No)
+        if reply != QMessageBox.StandardButton.Yes:
+            return
+
+        cmd = (
+            'about=;(set -f; '
+            'S=$(readeeprom -s); '
+            'case "$S" in '
+            '*AP_CM1_STATE=1*|*AP_CM1_STATE=2*) CM1="--cm1_state=0 --cm1_vehicle=?";; '
+            '*) CM1="";; '
+            'esac; '
+            'ap_mount --remount=rw; '
+            'writeeeprom --quiet --state=0 --vehicle=? $CM1; RC=$?; '
+            'if [ $RC -eq 0 ]; then '
+            'rm -f '
+            '/user/ap-data/user.rom /user/ap-data/user.md5sum '
+            '/user/ap-data/user_tcm.rom /user/ap-data/user_tcm.md5sum '
+            '/user/ap-data/user_df0.rom /user/ap-data/user_df1.rom '
+            '/user/ap-data/vidblock /user/ap-data/flashed_rom '
+            '/user/ap-data/user_vin /user/ap-data/ecu_og_id /user/ap-data/tcm_og_id '
+            '/user/ap-data/original_ecu.txt /user/ap-data/did_dump.txt '
+            '/user/ap-data/preinstall_stored_data /user/ap-data/recovery_settings '
+            '/user/ap-data/prev_install /user/ap-user/backupcksum; '
+            'cur_map --working=/user/ap-data --clear --realtime --reflash --quiet; '
+            'if [ -n "$CM1" ]; then cur_map --working=/user/ap-data --clear --tcm_reflash --quiet; fi; '
+            'fi; '
+            'ap_mount --remount=ro; '
+            'echo UNMARRY_RC=$RC; '
+            'readeeprom -s -i -k -f)'
+        )
+
+        self.t.send(runtask(cmd))
+        res = get_stdout(self.t.recv_until_finish())
+        if not "UNMARRY_RC=0" in res:
+            self.log(f"Unmarry failed! Response:\n{res}")
+            return
+
+        self.log("Unmarry succeeded, rebooting")
+        self.reboot()
+
+    def updateInitSerial(self):
+        reply = QMessageBox.question(self, "Confirm Update",
+                                     "Are you sure you want to update the original serial number?\n(Don't do this unless you know what you're doing)",
+                                     QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                                     QMessageBox.StandardButton.No)
+        if reply != QMessageBox.StandardButton.Yes:
+            return
+
+        self.t.send(runtask("about=;writeeeprom --quiet -I;echo RC=$?"))
+        rc = get_stdout(self.t.recv_until_finish())
+        if rc.splitlines()[0].split("=")[1] == "0":
+            self.log("Original serial number updated")
+            self.t.send(runtask("about=;readeeprom"))
+            self.eeprom = dict(l.split("=", 1) for l in get_stdout(self.t.recv_until_finish()).splitlines() if "=" in l)
+            self.updateEEPROMFields()
+        else:
+            self.log("Failed to update original serial number")
+
+    def reboot(self):
+        if self.t.dev:
+            self.t.send(frame(0x18))
+            self.t.drain()
+        else:
+            self.log("No device connected")
+
+    def updateEEPROMFields(self):
+        self.manuf.setCurrentIndex(self.manuf.findText(self.eeprom["AP_MANUF"]))
+        self.region.setCurrentIndex(self.region.findText(self.eeprom["AP_REGION"]))
+        self.model.setText(self.eeprom["AP_MODEL"])
+        self.vendor.setText(int(self.eeprom["AP_VENDOR"]).to_bytes(4, "big").decode("ascii"))
+        self.partNum.setText(self.eeprom["AP_PART_NUM"])
+        self.serial.setText(self.eeprom["AP_SERIAL"])
+        self.initSerial.setText(self.eeprom["AP_INIT_SERIAL"])
+        self.upgrSerial.setText(self.eeprom["AP_UPGR_SERIAL"])
+        self.userSerial.setText(self.eeprom["AP_USER_SERIAL"])
+        self.serialSticker.setText(self.eeprom["AP_SERIAL_STICKER"])
+        self.state.setCurrentIndex(int(self.eeprom["AP_STATE"]) + 1)
+        self.lock.setCurrentIndex(int(self.eeprom["AP_LOCK"]) + 1)
+        self.cm1State.setCurrentIndex(int(self.eeprom["AP_CM1_STATE"]) + 1)
+        self.cm1Lock.setCurrentIndex(int(self.eeprom["AP_CM1_LOCK"]) + 1)
+        self.tcmTuning.setCurrentIndex(int(self.eeprom["AP_FEATURE_TRANS_TUNING"]))
+        self.vehicle.setText(self.eeprom["AP_VEHICLE"])
+        self.cm1Vehicle.setText(self.eeprom["AP_CM1_VEHICLE"])
+        self.vin.setText(self.eeprom["VIN"])
+
+    def validateEEPROMFields(self):
+        # MANUF
+        if self.manuf.currentIndex() > -1:
+            self.eeprom["AP_MANUF"] = self.manuf.currentText()
+        else:
+            self.manuf.setFocus()
+            return False
+
+        # REGION
+        if self.region.currentIndex() > -1:
+            self.eeprom["AP_REGION"] = self.region.currentText()
+        else:
+            self.region.setFocus()
+            return False
+
+        # MODEL
+        try:
+            if 0 < int(self.model.text()) < 255:
+                self.eeprom["AP_MODEL"] = self.model.text()
+            else:
+                self.model.selectAll()
+                return False
+        except (ValueError, TypeError):
+            self.model.selectAll()
+            return False
+
+        # VENDOR
+        if len(self.vendor.text()) == 4 and self.vendor.text().isascii():
+            self.eeprom["AP_VENDOR"] = self.vendor.text()
+        else:
+            self.vendor.selectAll()
+            return False
+
+        # SERIAL
+        ok, reason, fields = ap_serial.validate(self.serial.text())
+        if ok \
+        and ap_serial.MANUF[fields["manuf"]] == self.manuf.currentText() \
+        and ap_serial.REGION[fields["region"]] == self.region.currentText() \
+        and fields["part"] == int(self.model.text()):
+            self.eeprom["AP_SERIAL"] = self.serial.text()
+        else:
+            self.serial.selectAll()
+            return False
+
+        # UPGR_SERIAL
+        try:
+            if 0 <= int(self.upgrSerial.text(), 0) <= 0xFFFFFFFF:
+                self.eeprom["AP_UPGR_SERIAL"] = self.upgrSerial.text()
+            else:
+                self.upgrSerial.selectAll()
+                return False
+        except (ValueError, TypeError):
+            self.upgrSerial.selectAll()
+            return False
+
+        # STATE
+        if self.state.currentIndex() > -1:
+            self.eeprom["AP_STATE"] = str(self.state.currentIndex() - 1)
+        else:
+            self.state.setFocus()
+            return False
+
+        # LOCK
+        if self.lock.currentIndex() > -1:
+            self.eeprom["AP_LOCK"] = str(self.lock.currentIndex() - 1)
+        else:
+            self.lock.setFocus()
+            return False
+
+        # CM1_STATE
+        if (self.cm1State.currentIndex() == 0 and self.tcmTuning.currentIndex() == 0) or (self.cm1State.currentIndex() > 0 and self.tcmTuning.currentIndex() == 1):
+            self.eeprom["AP_CM1_STATE"] = str(self.cm1State.currentIndex() - 1)
+        else:
+            self.cm1State.setFocus()
+            return False
+
+        # CM1_LOCK
+        if (self.cm1Lock.currentIndex() == 0 and self.tcmTuning.currentIndex() == 0) or (self.cm1Lock.currentIndex() > 0 and self.tcmTuning.currentIndex() == 1):
+            self.eeprom["AP_CM1_LOCK"] = str(self.cm1Lock.currentIndex() - 1)
+        else:
+            self.cm1Lock.setFocus()
+            return False
+
+        # FEATURE_TRANS_TUNING
+        if self.tcmTuning.currentIndex() > -1:
+            self.eeprom["AP_FEATURE_TRANS_TUNING"] = self.tcmTuning.currentIndex()
+        else:
+            self.tcmTuning.setFocus()
+            return False
+
+        # VEHICLE
+        if (self.state.currentIndex() == 1 and self.vehicle.text() == "?") or self.state.currentIndex() != 1:
+            self.eeprom["AP_VEHICLE"] = self.vehicle.text()
+        else:
+            self.vehicle.selectAll()
+            return False
+
+        # CM1_VEHICLE
+        if (self.cm1State.currentIndex() == 1 and self.cm1Vehicle.text() == "?") or self.cm1State.currentIndex() != 1:
+            self.eeprom["AP_CM1_VEHICLE"] = self.cm1Vehicle.text()
+        else:
+            self.cm1Vehicle.selectAll()
+            return False
+
+        return True
+
+    def saveFile(self):
+        path = self.fileTree.selected_file()
+        if path is None:
+            return
+        name = path.rsplit("/", 1)[-1]
+        local, _ = QFileDialog.getSaveFileName(self, "Save File", os.path.join(self.lastDir, name))
+        if not local:
+            return
+        self.lastDir = os.path.dirname(local)
+        try:
+            data = self.t.get_file(path, name)
+            with open(local, "wb") as f:
+                f.write(data)
+            self.log(f"File saved to {local}")
+        except Exception as e:
+            self.log(f"Download failed: {e}")
+
+    def uploadFile(self):
+        path = self.fileTree.selected_dir()
+        if path is None:
+            return
+        local, _ = QFileDialog.getOpenFileName(self, "Upload File", os.path.join(self.lastDir, path))
+        if not local:
+            return
+        self.lastDir = os.path.dirname(local)
+        name = os.path.basename(local)
+        dest = posixpath.join(path, name)
+        absPath = posixpath.join(self.fileTree.selected_abs(), name)
+        try:
+            with open(local, "rb") as f:
+                self.t.put_file(f.read(), dest)
+            self.log(f"File uploaded to {absPath}")
+            self.fileTree.refresh(self.fileTree.selected_item(), select_name=name)
+        except Exception as e:
+            self.log(f"Upload failed: {e}")
+
+    def createDir(self):
+        path = self.fileTree.selected_path()
+        if path is None:
+            return
+        name, ok = QInputDialog.getText(self, "Create Directory", "Directory name:")
+        if not name or not ok:
+            return
+        dest = posixpath.join(path, name)
+        temp = posixpath.join(dest, ".temp")
+        absPath = posixpath.join(self.fileTree.selected_abs(), name)
+        if not self.t.put_file(b"\x00", temp):
+            self.log(f"Failed to create directory {absPath} (read-only?)")
+            return
+        if not self.t.delete_file(temp):
+            self.log("Failed to delete temporary file after creating directory")
+            return
+        self.log(f"Created directory {absPath}")
+        self.fileTree.refresh(self.fileTree.selected_item(), select_name=name)
+
+    def renameFile(self):
+        path = self.fileTree.selected_path()
+        if path is None:
+            return
+        name, ok = QInputDialog.getText(self, "Rename File", "New name:", text=os.path.basename(path))
+        if not ok or not name or "/" in name:
+            return
+        newPath = posixpath.join(str(posixpath.dirname(path)), name)
+        if self.t.rename_file(path, newPath):
+            self.log(f"Renamed {self.fileTree.selected_abs()} to {posixpath.normpath(posixpath.join("/user/ap-user", newPath))}")
+            self.fileTree.refresh(self.fileTree.selected_item().parent())
+        else:
+            self.log(f"Failed to rename {path} (read-only?)")
+
+        # path = self.fileTree.selected_abs()
+        # if path is None:
+        #     return
+        # name, ok = QInputDialog.getText(self, "Rename File", "New name:", text=os.path.basename(path))
+        # if not ok or not name or "/" in name:
+        #     return
+        # newPath = posixpath.join(posixpath.dirname(path), name)
+        # cmd = (f"about=;ap_mount --remount=rw || exit 1;"
+        #        f"if [ -e {shlex.quote(newPath)} ]; then rc=2;"
+        #        f"else mv {shlex.quote(path)} {shlex.quote(newPath)}; rc=$?; fi;"
+        #        f"ap_mount --remount=ro; echo RC=$rc")
+        # self.t.send(runtask(cmd))
+        # rc = get_stdout(self.t.recv_until_finish())
+        # if "RC=0" in rc:
+        #     self.log(f"Renamed to {newPath}")
+        #     self.fileTree.refresh(self.fileTree.selected_item().parent(), select_name=name)
+        # elif "RC=2" in rc:
+        #     self.log(f"Rename failed: {newPath} already exists")
+        # else:
+        #     self.log("Rename failed")
+
+    def deleteFile(self):
+        if self.fileTree.is_root():
+            return
+        path = self.fileTree.selected_path()
+        if path is None:
+            return
+        absPath = self.fileTree.selected_abs()
+        reply = QMessageBox.question(self, "Confirm Delete",
+                                     "Are you sure you want to proceed?\nThis action is irreversible!",
+                                     QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                                     QMessageBox.StandardButton.No)
+        if reply != QMessageBox.StandardButton.Yes:
+            return
+
+        if not self.t.delete_file(path):
+            self.log(f"Failed to delete {absPath} (read-only or non-empty?)")
+            return
+        self.log(f"Deleted {absPath}")
+        self.fileTree.refresh(self.fileTree.selected_item().parent())
+
+    def updateFileButtons(self, item, isFile, isDir):
+        writable = self.fileTree.is_writable(item)
+        protected = self.fileTree.is_protected(item)
+        self.saveBtn.setEnabled(isFile)
+        self.uploadBtn.setEnabled(isDir and writable)
+        self.createDirBtn.setEnabled(isDir and writable)
+        self.renameBtn.setEnabled((isFile or isDir) and writable and not protected)
+        self.deleteBtn.setEnabled((isFile or isDir) and writable and not protected)
+
+    def startShell(self):
+        l = self.t.list_dir("../../tmp")
+        if "apsh" not in l or "apsh.sh" not in l:
+            with open(Path(__file__).resolve().parent / "apsh" / "apsh", "rb") as f:
+                if not self.t.put_file(f.read(), "../../tmp/apsh"):
+                    self.log("Failed to push apsh to /tmp")
+                    return
+            with open(Path(__file__).resolve().parent / "apsh" / "apsh.sh", "rb") as f:
+                if not self.t.put_file(f.read(), "../../tmp/apsh.sh"):
+                    self.log("Failed to push apsh.sh to /tmp")
+                    return
+        self.t.send(runtask("about=;sh /tmp/apsh.sh </dev/null >/dev/null 2>&1 &"))
+        self.log(get_stdout(self.t.recv_until_finish()))
+
+        time.sleep(1.2)
+        self.apsh.start()
+
+    def stopShell(self):
+        self.apsh.stop()
+
+if __name__ == "__main__":
+    app = QApplication(sys.argv)
+    window = MainWindow()
+    window.show()
+    sys.exit(app.exec())

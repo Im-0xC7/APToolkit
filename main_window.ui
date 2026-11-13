@@ -1,0 +1,1202 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>MainWindow</class>
+ <widget class="QMainWindow" name="MainWindow">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>830</width>
+    <height>500</height>
+   </rect>
+  </property>
+  <property name="sizePolicy">
+   <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+    <horstretch>0</horstretch>
+    <verstretch>0</verstretch>
+   </sizepolicy>
+  </property>
+  <property name="minimumSize">
+   <size>
+    <width>830</width>
+    <height>500</height>
+   </size>
+  </property>
+  <property name="maximumSize">
+   <size>
+    <width>830</width>
+    <height>500</height>
+   </size>
+  </property>
+  <property name="windowTitle">
+   <string>APToolkit</string>
+  </property>
+  <property name="tabShape">
+   <enum>QTabWidget::TabShape::Rounded</enum>
+  </property>
+  <property name="unifiedTitleAndToolBarOnMac">
+   <bool>false</bool>
+  </property>
+  <widget class="QWidget" name="centralwidget">
+   <widget class="QTabWidget" name="tabWidget">
+    <property name="enabled">
+     <bool>true</bool>
+    </property>
+    <property name="geometry">
+     <rect>
+      <x>0</x>
+      <y>0</y>
+      <width>830</width>
+      <height>290</height>
+     </rect>
+    </property>
+    <property name="autoFillBackground">
+     <bool>false</bool>
+    </property>
+    <property name="tabShape">
+     <enum>QTabWidget::TabShape::Rounded</enum>
+    </property>
+    <property name="currentIndex">
+     <number>2</number>
+    </property>
+    <property name="elideMode">
+     <enum>Qt::TextElideMode::ElideNone</enum>
+    </property>
+    <property name="usesScrollButtons">
+     <bool>true</bool>
+    </property>
+    <property name="documentMode">
+     <bool>false</bool>
+    </property>
+    <property name="tabsClosable">
+     <bool>false</bool>
+    </property>
+    <property name="tabBarAutoHide">
+     <bool>false</bool>
+    </property>
+    <widget class="QWidget" name="identity">
+     <attribute name="title">
+      <string>Identity</string>
+     </attribute>
+     <widget class="QLabel" name="manufLabel">
+      <property name="geometry">
+       <rect>
+        <x>10</x>
+        <y>10</y>
+        <width>120</width>
+        <height>17</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>Manufacturer</string>
+      </property>
+     </widget>
+     <widget class="QLabel" name="regionLabel">
+      <property name="geometry">
+       <rect>
+        <x>10</x>
+        <y>60</y>
+        <width>120</width>
+        <height>17</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>Region</string>
+      </property>
+     </widget>
+     <widget class="QLineEdit" name="model">
+      <property name="geometry">
+       <rect>
+        <x>10</x>
+        <y>130</y>
+        <width>120</width>
+        <height>23</height>
+       </rect>
+      </property>
+     </widget>
+     <widget class="QLabel" name="modelLabel">
+      <property name="geometry">
+       <rect>
+        <x>10</x>
+        <y>110</y>
+        <width>120</width>
+        <height>17</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>Model</string>
+      </property>
+     </widget>
+     <widget class="QLabel" name="vendorLabel">
+      <property name="geometry">
+       <rect>
+        <x>10</x>
+        <y>160</y>
+        <width>120</width>
+        <height>17</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>Vendor</string>
+      </property>
+     </widget>
+     <widget class="QLineEdit" name="vendor">
+      <property name="geometry">
+       <rect>
+        <x>10</x>
+        <y>180</y>
+        <width>120</width>
+        <height>23</height>
+       </rect>
+      </property>
+     </widget>
+     <widget class="QLineEdit" name="partNum">
+      <property name="enabled">
+       <bool>true</bool>
+      </property>
+      <property name="geometry">
+       <rect>
+        <x>10</x>
+        <y>230</y>
+        <width>120</width>
+        <height>23</height>
+       </rect>
+      </property>
+      <property name="readOnly">
+       <bool>true</bool>
+      </property>
+     </widget>
+     <widget class="QLabel" name="partNumLabel">
+      <property name="geometry">
+       <rect>
+        <x>10</x>
+        <y>210</y>
+        <width>120</width>
+        <height>17</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>Part Number</string>
+      </property>
+     </widget>
+     <widget class="QLabel" name="serialLabel">
+      <property name="geometry">
+       <rect>
+        <x>140</x>
+        <y>10</y>
+        <width>120</width>
+        <height>17</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>Serial</string>
+      </property>
+     </widget>
+     <widget class="QLineEdit" name="serial">
+      <property name="geometry">
+       <rect>
+        <x>140</x>
+        <y>30</y>
+        <width>120</width>
+        <height>23</height>
+       </rect>
+      </property>
+     </widget>
+     <widget class="QLabel" name="initSerialLabel">
+      <property name="geometry">
+       <rect>
+        <x>140</x>
+        <y>110</y>
+        <width>120</width>
+        <height>17</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>Original Serial</string>
+      </property>
+     </widget>
+     <widget class="QLineEdit" name="initSerial">
+      <property name="enabled">
+       <bool>true</bool>
+      </property>
+      <property name="geometry">
+       <rect>
+        <x>140</x>
+        <y>130</y>
+        <width>120</width>
+        <height>23</height>
+       </rect>
+      </property>
+      <property name="readOnly">
+       <bool>true</bool>
+      </property>
+     </widget>
+     <widget class="QLabel" name="upgrSerialLabel">
+      <property name="geometry">
+       <rect>
+        <x>140</x>
+        <y>60</y>
+        <width>120</width>
+        <height>17</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>Upgrade Serial</string>
+      </property>
+     </widget>
+     <widget class="QLineEdit" name="upgrSerial">
+      <property name="geometry">
+       <rect>
+        <x>140</x>
+        <y>80</y>
+        <width>120</width>
+        <height>23</height>
+       </rect>
+      </property>
+     </widget>
+     <widget class="QLabel" name="userSerialLabel">
+      <property name="geometry">
+       <rect>
+        <x>140</x>
+        <y>160</y>
+        <width>120</width>
+        <height>17</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>User Serial</string>
+      </property>
+     </widget>
+     <widget class="QLineEdit" name="userSerial">
+      <property name="enabled">
+       <bool>true</bool>
+      </property>
+      <property name="geometry">
+       <rect>
+        <x>140</x>
+        <y>180</y>
+        <width>120</width>
+        <height>23</height>
+       </rect>
+      </property>
+      <property name="readOnly">
+       <bool>true</bool>
+      </property>
+     </widget>
+     <widget class="QLineEdit" name="serialSticker">
+      <property name="enabled">
+       <bool>true</bool>
+      </property>
+      <property name="geometry">
+       <rect>
+        <x>140</x>
+        <y>230</y>
+        <width>120</width>
+        <height>23</height>
+       </rect>
+      </property>
+      <property name="readOnly">
+       <bool>true</bool>
+      </property>
+     </widget>
+     <widget class="QLabel" name="serialStickerLabel">
+      <property name="geometry">
+       <rect>
+        <x>140</x>
+        <y>210</y>
+        <width>120</width>
+        <height>17</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>Sticker Serial</string>
+      </property>
+     </widget>
+     <widget class="QLabel" name="lockLabel">
+      <property name="geometry">
+       <rect>
+        <x>270</x>
+        <y>110</y>
+        <width>120</width>
+        <height>17</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>ECU Tune Lock</string>
+      </property>
+     </widget>
+     <widget class="QLabel" name="cm1LockLabel">
+      <property name="geometry">
+       <rect>
+        <x>270</x>
+        <y>160</y>
+        <width>120</width>
+        <height>17</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>TCM Tune Lock</string>
+      </property>
+     </widget>
+     <widget class="QLabel" name="stateLabel">
+      <property name="geometry">
+       <rect>
+        <x>270</x>
+        <y>10</y>
+        <width>120</width>
+        <height>17</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>Device State</string>
+      </property>
+     </widget>
+     <widget class="QLabel" name="cm1StateLabel">
+      <property name="geometry">
+       <rect>
+        <x>270</x>
+        <y>60</y>
+        <width>120</width>
+        <height>17</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>TCM State</string>
+      </property>
+     </widget>
+     <widget class="QLabel" name="vehicleLabel">
+      <property name="geometry">
+       <rect>
+        <x>400</x>
+        <y>10</y>
+        <width>420</width>
+        <height>17</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>Married Vehicle</string>
+      </property>
+     </widget>
+     <widget class="QLineEdit" name="vehicle">
+      <property name="geometry">
+       <rect>
+        <x>400</x>
+        <y>30</y>
+        <width>420</width>
+        <height>23</height>
+       </rect>
+      </property>
+     </widget>
+     <widget class="QLabel" name="cm1VehicleLabel">
+      <property name="geometry">
+       <rect>
+        <x>400</x>
+        <y>60</y>
+        <width>420</width>
+        <height>17</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>Married TCM</string>
+      </property>
+     </widget>
+     <widget class="QLineEdit" name="cm1Vehicle">
+      <property name="geometry">
+       <rect>
+        <x>400</x>
+        <y>80</y>
+        <width>420</width>
+        <height>23</height>
+       </rect>
+      </property>
+     </widget>
+     <widget class="QPushButton" name="unmarryBtn">
+      <property name="geometry">
+       <rect>
+        <x>400</x>
+        <y>190</y>
+        <width>140</width>
+        <height>30</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>Unmarry Vehicle</string>
+      </property>
+     </widget>
+     <widget class="QPushButton" name="updateInitSerialBtn">
+      <property name="geometry">
+       <rect>
+        <x>540</x>
+        <y>190</y>
+        <width>140</width>
+        <height>30</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>Update Original Serial</string>
+      </property>
+     </widget>
+     <widget class="QPushButton" name="saveEEPROMBtn">
+      <property name="geometry">
+       <rect>
+        <x>680</x>
+        <y>160</y>
+        <width>140</width>
+        <height>30</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>Save EEPROM to File</string>
+      </property>
+     </widget>
+     <widget class="QPushButton" name="readEEPROMBtn">
+      <property name="geometry">
+       <rect>
+        <x>400</x>
+        <y>160</y>
+        <width>140</width>
+        <height>30</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>Read EEPROM</string>
+      </property>
+     </widget>
+     <widget class="QPushButton" name="writeEEPROMBtn">
+      <property name="geometry">
+       <rect>
+        <x>540</x>
+        <y>160</y>
+        <width>140</width>
+        <height>30</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>Write EEPROM</string>
+      </property>
+     </widget>
+     <widget class="QComboBox" name="state">
+      <property name="geometry">
+       <rect>
+        <x>270</x>
+        <y>30</y>
+        <width>120</width>
+        <height>23</height>
+       </rect>
+      </property>
+      <property name="editable">
+       <bool>false</bool>
+      </property>
+      <property name="currentIndex">
+       <number>-1</number>
+      </property>
+      <item>
+       <property name="text">
+        <string>INVALID</string>
+       </property>
+      </item>
+      <item>
+       <property name="text">
+        <string>UNINSTALLED</string>
+       </property>
+      </item>
+      <item>
+       <property name="text">
+        <string>INSTALLED</string>
+       </property>
+      </item>
+      <item>
+       <property name="text">
+        <string>RECOVERY</string>
+       </property>
+      </item>
+      <item>
+       <property name="text">
+        <string>UNKNOWN_ROM</string>
+       </property>
+      </item>
+      <item>
+       <property name="text">
+        <string>FW_CONFLICT</string>
+       </property>
+      </item>
+      <item>
+       <property name="text">
+        <string>DEACTIVATED</string>
+       </property>
+      </item>
+      <item>
+       <property name="text">
+        <string>ADV_RECOVERY</string>
+       </property>
+      </item>
+     </widget>
+     <widget class="QComboBox" name="cm1State">
+      <property name="geometry">
+       <rect>
+        <x>270</x>
+        <y>80</y>
+        <width>120</width>
+        <height>23</height>
+       </rect>
+      </property>
+      <property name="editable">
+       <bool>false</bool>
+      </property>
+      <property name="currentIndex">
+       <number>-1</number>
+      </property>
+      <item>
+       <property name="text">
+        <string>INVALID</string>
+       </property>
+      </item>
+      <item>
+       <property name="text">
+        <string>UNINSTALLED</string>
+       </property>
+      </item>
+      <item>
+       <property name="text">
+        <string>INSTALLED</string>
+       </property>
+      </item>
+      <item>
+       <property name="text">
+        <string>RECOVERY</string>
+       </property>
+      </item>
+      <item>
+       <property name="text">
+        <string>UNKNOWN_ROM</string>
+       </property>
+      </item>
+      <item>
+       <property name="text">
+        <string>FW_CONFLICT</string>
+       </property>
+      </item>
+      <item>
+       <property name="text">
+        <string>DEACTIVATED</string>
+       </property>
+      </item>
+      <item>
+       <property name="text">
+        <string>ADV_RECOVERY</string>
+       </property>
+      </item>
+     </widget>
+     <widget class="QComboBox" name="lock">
+      <property name="geometry">
+       <rect>
+        <x>270</x>
+        <y>130</y>
+        <width>120</width>
+        <height>23</height>
+       </rect>
+      </property>
+      <property name="editable">
+       <bool>false</bool>
+      </property>
+      <property name="currentIndex">
+       <number>-1</number>
+      </property>
+      <item>
+       <property name="text">
+        <string>INVALID</string>
+       </property>
+      </item>
+      <item>
+       <property name="text">
+        <string>LOCK_PT_ALL</string>
+       </property>
+      </item>
+      <item>
+       <property name="text">
+        <string>LOCK_PT_VENDOR</string>
+       </property>
+      </item>
+      <item>
+       <property name="text">
+        <string>LOCK_PT_PORT</string>
+       </property>
+      </item>
+      <item>
+       <property name="text">
+        <string>LOCK_ST_ALL</string>
+       </property>
+      </item>
+      <item>
+       <property name="text">
+        <string>LOCK_ST_VENDOR</string>
+       </property>
+      </item>
+      <item>
+       <property name="text">
+        <string>LOCK_ST_PORT</string>
+       </property>
+      </item>
+     </widget>
+     <widget class="QComboBox" name="cm1Lock">
+      <property name="geometry">
+       <rect>
+        <x>270</x>
+        <y>180</y>
+        <width>120</width>
+        <height>23</height>
+       </rect>
+      </property>
+      <property name="editable">
+       <bool>false</bool>
+      </property>
+      <property name="currentIndex">
+       <number>-1</number>
+      </property>
+      <item>
+       <property name="text">
+        <string>INVALID</string>
+       </property>
+      </item>
+      <item>
+       <property name="text">
+        <string>LOCK_PT_ALL</string>
+       </property>
+      </item>
+      <item>
+       <property name="text">
+        <string>LOCK_PT_VENDOR</string>
+       </property>
+      </item>
+      <item>
+       <property name="text">
+        <string>LOCK_PT_PORT</string>
+       </property>
+      </item>
+      <item>
+       <property name="text">
+        <string>LOCK_ST_ALL</string>
+       </property>
+      </item>
+      <item>
+       <property name="text">
+        <string>LOCK_ST_VENDOR</string>
+       </property>
+      </item>
+      <item>
+       <property name="text">
+        <string>LOCK_ST_PORT</string>
+       </property>
+      </item>
+     </widget>
+     <widget class="QComboBox" name="tcmTuning">
+      <property name="geometry">
+       <rect>
+        <x>270</x>
+        <y>230</y>
+        <width>120</width>
+        <height>23</height>
+       </rect>
+      </property>
+      <property name="editable">
+       <bool>false</bool>
+      </property>
+      <property name="currentIndex">
+       <number>-1</number>
+      </property>
+      <item>
+       <property name="text">
+        <string>DISABLED</string>
+       </property>
+      </item>
+      <item>
+       <property name="text">
+        <string>ENABLED</string>
+       </property>
+      </item>
+     </widget>
+     <widget class="QLabel" name="tcmTuningLabel">
+      <property name="geometry">
+       <rect>
+        <x>270</x>
+        <y>210</y>
+        <width>120</width>
+        <height>17</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>TCM Tuning</string>
+      </property>
+     </widget>
+     <widget class="QComboBox" name="manuf">
+      <property name="geometry">
+       <rect>
+        <x>10</x>
+        <y>30</y>
+        <width>120</width>
+        <height>23</height>
+       </rect>
+      </property>
+      <property name="editable">
+       <bool>false</bool>
+      </property>
+      <property name="currentIndex">
+       <number>-1</number>
+      </property>
+      <property name="insertPolicy">
+       <enum>QComboBox::InsertPolicy::InsertAtBottom</enum>
+      </property>
+      <item>
+       <property name="text">
+        <string>SUB</string>
+       </property>
+      </item>
+      <item>
+       <property name="text">
+        <string>MIT</string>
+       </property>
+      </item>
+      <item>
+       <property name="text">
+        <string>NIS</string>
+       </property>
+      </item>
+      <item>
+       <property name="text">
+        <string>MAZ</string>
+       </property>
+      </item>
+      <item>
+       <property name="text">
+        <string>HON</string>
+       </property>
+      </item>
+      <item>
+       <property name="text">
+        <string>BMW</string>
+       </property>
+      </item>
+      <item>
+       <property name="text">
+        <string>FOR</string>
+       </property>
+      </item>
+      <item>
+       <property name="text">
+        <string>POR</string>
+       </property>
+      </item>
+      <item>
+       <property name="text">
+        <string>VLK</string>
+       </property>
+      </item>
+      <item>
+       <property name="text">
+        <string>TOY</string>
+       </property>
+      </item>
+      <item>
+       <property name="text">
+        <string>APA</string>
+       </property>
+      </item>
+     </widget>
+     <widget class="QComboBox" name="region">
+      <property name="geometry">
+       <rect>
+        <x>10</x>
+        <y>80</y>
+        <width>120</width>
+        <height>23</height>
+       </rect>
+      </property>
+      <property name="editable">
+       <bool>false</bool>
+      </property>
+      <property name="currentIndex">
+       <number>-1</number>
+      </property>
+      <item>
+       <property name="text">
+        <string>US</string>
+       </property>
+      </item>
+      <item>
+       <property name="text">
+        <string>JP</string>
+       </property>
+      </item>
+      <item>
+       <property name="text">
+        <string>EU</string>
+       </property>
+      </item>
+      <item>
+       <property name="text">
+        <string>AU</string>
+       </property>
+      </item>
+     </widget>
+     <widget class="QPushButton" name="rebootBtn">
+      <property name="geometry">
+       <rect>
+        <x>680</x>
+        <y>190</y>
+        <width>140</width>
+        <height>30</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>Reboot Accessport</string>
+      </property>
+     </widget>
+     <widget class="QLineEdit" name="vin">
+      <property name="geometry">
+       <rect>
+        <x>400</x>
+        <y>130</y>
+        <width>420</width>
+        <height>23</height>
+       </rect>
+      </property>
+      <property name="readOnly">
+       <bool>true</bool>
+      </property>
+     </widget>
+     <widget class="QLabel" name="vinLabel">
+      <property name="geometry">
+       <rect>
+        <x>400</x>
+        <y>110</y>
+        <width>420</width>
+        <height>17</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>Married VIN</string>
+      </property>
+     </widget>
+    </widget>
+    <widget class="QWidget" name="files">
+     <attribute name="title">
+      <string>Files</string>
+     </attribute>
+     <widget class="QTreeWidget" name="fileTreeView">
+      <property name="geometry">
+       <rect>
+        <x>35</x>
+        <y>5</y>
+        <width>790</width>
+        <height>250</height>
+       </rect>
+      </property>
+      <attribute name="headerMinimumSectionSize">
+       <number>80</number>
+      </attribute>
+      <attribute name="headerStretchLastSection">
+       <bool>false</bool>
+      </attribute>
+      <column>
+       <property name="text">
+        <string>Name</string>
+       </property>
+      </column>
+      <column>
+       <property name="text">
+        <string>Size</string>
+       </property>
+      </column>
+     </widget>
+     <widget class="QToolButton" name="uploadBtn">
+      <property name="enabled">
+       <bool>false</bool>
+      </property>
+      <property name="geometry">
+       <rect>
+        <x>5</x>
+        <y>35</y>
+        <width>25</width>
+        <height>25</height>
+       </rect>
+      </property>
+      <property name="toolTip">
+       <string>Upload File</string>
+      </property>
+      <property name="text">
+       <string/>
+      </property>
+      <property name="icon">
+       <iconset theme="QIcon::ThemeIcon::DocumentNew"/>
+      </property>
+     </widget>
+     <widget class="QToolButton" name="deleteBtn">
+      <property name="enabled">
+       <bool>false</bool>
+      </property>
+      <property name="geometry">
+       <rect>
+        <x>5</x>
+        <y>125</y>
+        <width>25</width>
+        <height>25</height>
+       </rect>
+      </property>
+      <property name="toolTip">
+       <string>Delete File/Directory</string>
+      </property>
+      <property name="text">
+       <string/>
+      </property>
+      <property name="icon">
+       <iconset theme="QIcon::ThemeIcon::EditDelete"/>
+      </property>
+     </widget>
+     <widget class="QToolButton" name="saveBtn">
+      <property name="enabled">
+       <bool>false</bool>
+      </property>
+      <property name="geometry">
+       <rect>
+        <x>5</x>
+        <y>5</y>
+        <width>25</width>
+        <height>25</height>
+       </rect>
+      </property>
+      <property name="toolTip">
+       <string>Save File</string>
+      </property>
+      <property name="text">
+       <string/>
+      </property>
+      <property name="icon">
+       <iconset theme="QIcon::ThemeIcon::DocumentSave"/>
+      </property>
+     </widget>
+     <widget class="QToolButton" name="createDirBtn">
+      <property name="enabled">
+       <bool>false</bool>
+      </property>
+      <property name="geometry">
+       <rect>
+        <x>5</x>
+        <y>65</y>
+        <width>25</width>
+        <height>25</height>
+       </rect>
+      </property>
+      <property name="toolTip">
+       <string>Create Directory</string>
+      </property>
+      <property name="text">
+       <string/>
+      </property>
+      <property name="icon">
+       <iconset theme="QIcon::ThemeIcon::FolderNew"/>
+      </property>
+     </widget>
+     <widget class="QToolButton" name="renameBtn">
+      <property name="enabled">
+       <bool>false</bool>
+      </property>
+      <property name="geometry">
+       <rect>
+        <x>5</x>
+        <y>95</y>
+        <width>25</width>
+        <height>25</height>
+       </rect>
+      </property>
+      <property name="toolTip">
+       <string>Rename File/Directory</string>
+      </property>
+      <property name="text">
+       <string/>
+      </property>
+      <property name="icon">
+       <iconset theme="QIcon::ThemeIcon::DocumentProperties"/>
+      </property>
+     </widget>
+    </widget>
+    <widget class="QWidget" name="shell">
+     <attribute name="title">
+      <string>Shell</string>
+     </attribute>
+     <widget class="QPushButton" name="startShellBtn">
+      <property name="geometry">
+       <rect>
+        <x>5</x>
+        <y>5</y>
+        <width>120</width>
+        <height>30</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>Start Shell</string>
+      </property>
+     </widget>
+     <widget class="QPushButton" name="stopShellBtn">
+      <property name="enabled">
+       <bool>false</bool>
+      </property>
+      <property name="geometry">
+       <rect>
+        <x>5</x>
+        <y>35</y>
+        <width>120</width>
+        <height>30</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>Stop Shell</string>
+      </property>
+     </widget>
+     <widget class="QPlainTextEdit" name="shellOutput">
+      <property name="geometry">
+       <rect>
+        <x>130</x>
+        <y>5</y>
+        <width>690</width>
+        <height>225</height>
+       </rect>
+      </property>
+      <property name="palette">
+       <palette>
+        <active>
+         <colorrole role="Text">
+          <brush brushstyle="SolidPattern">
+           <color alpha="255">
+            <red>255</red>
+            <green>255</green>
+            <blue>255</blue>
+           </color>
+          </brush>
+         </colorrole>
+         <colorrole role="Base">
+          <brush brushstyle="SolidPattern">
+           <color alpha="255">
+            <red>0</red>
+            <green>0</green>
+            <blue>0</blue>
+           </color>
+          </brush>
+         </colorrole>
+        </active>
+        <inactive>
+         <colorrole role="Text">
+          <brush brushstyle="SolidPattern">
+           <color alpha="255">
+            <red>255</red>
+            <green>255</green>
+            <blue>255</blue>
+           </color>
+          </brush>
+         </colorrole>
+         <colorrole role="Base">
+          <brush brushstyle="SolidPattern">
+           <color alpha="255">
+            <red>0</red>
+            <green>0</green>
+            <blue>0</blue>
+           </color>
+          </brush>
+         </colorrole>
+        </inactive>
+        <disabled/>
+       </palette>
+      </property>
+      <property name="frameShape">
+       <enum>QFrame::Shape::NoFrame</enum>
+      </property>
+      <property name="undoRedoEnabled">
+       <bool>false</bool>
+      </property>
+      <property name="textInteractionFlags">
+       <set>Qt::TextInteractionFlag::TextSelectableByKeyboard|Qt::TextInteractionFlag::TextSelectableByMouse</set>
+      </property>
+     </widget>
+     <widget class="QLineEdit" name="shellInput">
+      <property name="geometry">
+       <rect>
+        <x>130</x>
+        <y>230</y>
+        <width>690</width>
+        <height>25</height>
+       </rect>
+      </property>
+      <property name="frame">
+       <bool>true</bool>
+      </property>
+     </widget>
+    </widget>
+   </widget>
+   <widget class="QPlainTextEdit" name="output">
+    <property name="geometry">
+     <rect>
+      <x>0</x>
+      <y>290</y>
+      <width>830</width>
+      <height>210</height>
+     </rect>
+    </property>
+    <property name="palette">
+     <palette>
+      <active>
+       <colorrole role="Text">
+        <brush brushstyle="SolidPattern">
+         <color alpha="255">
+          <red>255</red>
+          <green>255</green>
+          <blue>255</blue>
+         </color>
+        </brush>
+       </colorrole>
+       <colorrole role="Base">
+        <brush brushstyle="SolidPattern">
+         <color alpha="255">
+          <red>0</red>
+          <green>0</green>
+          <blue>0</blue>
+         </color>
+        </brush>
+       </colorrole>
+      </active>
+      <inactive>
+       <colorrole role="Text">
+        <brush brushstyle="SolidPattern">
+         <color alpha="255">
+          <red>255</red>
+          <green>255</green>
+          <blue>255</blue>
+         </color>
+        </brush>
+       </colorrole>
+       <colorrole role="Base">
+        <brush brushstyle="SolidPattern">
+         <color alpha="255">
+          <red>0</red>
+          <green>0</green>
+          <blue>0</blue>
+         </color>
+        </brush>
+       </colorrole>
+      </inactive>
+      <disabled/>
+     </palette>
+    </property>
+    <property name="frameShape">
+     <enum>QFrame::Shape::NoFrame</enum>
+    </property>
+    <property name="undoRedoEnabled">
+     <bool>false</bool>
+    </property>
+    <property name="textInteractionFlags">
+     <set>Qt::TextInteractionFlag::TextSelectableByKeyboard|Qt::TextInteractionFlag::TextSelectableByMouse</set>
+    </property>
+   </widget>
+  </widget>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>
