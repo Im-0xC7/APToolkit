@@ -53,7 +53,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         super().__init__()
         self.setupUi(self)
 
-        self.pool = QThreadPool(self)
+        self.pool = QThreadPool().globalInstance()
         self.pool.setMaxThreadCount(1)
 
         self.deviceConnected.connect(self.usbConnected)
@@ -121,67 +121,68 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.updateFileButtons(None, False, False)
             self.log("Accessport disconnected")
 
-    def onEEPROMRead(self, out: str):
+    def _onEEPROMRead(self, out: str):
         self.eeprom = dict(l.split("=", 1) for l in out.splitlines() if "=" in l)
         self.updateEEPROMFields()
         self.log("EEPROM read successfully")
+
+    def _onEEPROMReadFinished(self):
         self.readEEPROMBtn.setEnabled(True)
 
     def readEEPROM(self):
         self.readEEPROMBtn.setEnabled(False)
 
         sig = RunTaskSignals()
-        sig.result.connect(self.onEEPROMRead)
         sig.error.connect(self.log)
-        sig.finished.connect(lambda: self.readEEPROMBtn.setEnabled(True))
+        sig.result.connect(self._onEEPROMRead)
+        sig.finished.connect(self._onEEPROMReadFinished)
         self.pool.start(RunTaskJob("(readeeprom; if [ -e /user/ap-data/user_vin ]; then VIN=$(cat /user/ap-data/user_vin); else VIN=Unknown; fi; echo VIN=$VIN)", self.t, sig))
 
-        # if self.t.dev:
-        #     self.t.send(runtask("about=;readeeprom"))
-        #     self.eeprom = dict(l.split("=", 1) for l in get_stdout(self.t.recv_until_finish()).splitlines() if "=" in l)
-        #     self.updateEEPROMFields()
-        #     self.t.send(runtask("about=;if [ -e /user/ap-data/user_vin ]; then cat /user/ap-data/user_vin; else echo Unknown; fi"))
-        #     self.vin.setText(get_stdout(self.t.recv_until_finish()).splitlines()[0])
-        #     self.log("EEPROM read successfully")
-        # else:
-        #     self.log("No device connected")
+    def _onEEPROMWrite(self, out: str):
+        if "RC=0" in out:
+            self.log("EEPROM written successfully")
+        else:
+            self.log("EEPROM write unsuccessful, check fields and try again")
+
+    def _onEEPROMWriteFinished(self):
+        self.writeEEPROMBtn.setEnabled(True)
 
     def writeEEPROM(self):
         if not self.validateEEPROMFields():
             self.log("Check the highlighted field and try again")
             return
 
-        if self.t.dev:
-            reply = QMessageBox.question(self, "Confirm EEPROM Write",
-                                         "Are you sure you want to proceed?",
-                                         QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No, QMessageBox.StandardButton.No)
-            if reply == QMessageBox.StandardButton.Yes:
-                command = "about=;writeeeprom --quiet"
-                command += f" -m {self.eeprom["AP_MANUF"]}"
-                command += f" -r {self.eeprom["AP_REGION"]}"
-                command += f" -v {self.eeprom["AP_MODEL"].lstrip("0") or "0"}"
-                command += f" -C {self.eeprom["AP_VENDOR"]}"
-                command += f" -n {self.eeprom["AP_SERIAL"]}"
-                command += f" -g {self.eeprom["AP_UPGR_SERIAL"]}"
-                command += f" -s {self.eeprom["AP_STATE"]}"
-                command += f" -u {self.eeprom["AP_CM1_STATE"]}"
-                command += f" -k {self.eeprom["AP_LOCK"]}"
-                command += f" -p {self.eeprom["AP_CM1_LOCK"]}"
-                command += f" -i {self.eeprom["AP_VEHICLE"]}"
-                command += f" -j {self.eeprom["AP_CM1_VEHICLE"]}"
-                command += f" -{"a" if self.eeprom["AP_FEATURE_TRANS_TUNING"] == 1 else "d"} AP_FEATURE_TRANS_TUNING"
-                command += f";echo RC=$?"
+        reply = QMessageBox.question(self, "Confirm EEPROM Write",
+                                     "Are you sure you want to proceed?",
+                                     QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No, QMessageBox.StandardButton.No)
+        if reply != QMessageBox.StandardButton.Yes:
+            return
 
-                # self.log(f"command: {command}")
+        cmd = (
+            "about=;writeeeprom --quiet "
+            f"-m {self.eeprom["AP_MANUF"]} "
+            f"-r {self.eeprom["AP_REGION"]} "
+            f"-v {self.eeprom["AP_MODEL"].lstrip("0") or "0"} "
+            f"-C {self.eeprom["AP_VENDOR"]} "
+            f"-n {self.eeprom["AP_SERIAL"]} "
+            f"-g {self.eeprom["AP_UPGR_SERIAL"]} "
+            f"-s {self.eeprom["AP_STATE"]} "
+            f"-u {self.eeprom["AP_CM1_STATE"]} "
+            f"-k {self.eeprom["AP_LOCK"]} "
+            f"-p {self.eeprom["AP_CM1_LOCK"]} "
+            f"-i {self.eeprom["AP_VEHICLE"]} "
+            f"-j {self.eeprom["AP_CM1_VEHICLE"]} "
+            f"-{"a" if self.eeprom["AP_FEATURE_TRANS_TUNING"] == 1 else "d"} AP_FEATURE_TRANS_TUNING; "
+            f"echo RC=$?"
+        )
 
-                self.t.send(runtask(command))
-                rc = get_stdout(self.t.recv_until_finish())
-                if "RC=0" in rc:
-                    self.log("EEPROM written successfully")
-                else:
-                    self.log("EEPROM write unsuccessful, check fields and try again")
-        else:
-            self.log("No device connected")
+        self.writeEEPROMBtn.setEnabled(False)
+
+        sig = RunTaskSignals()
+        sig.error.connect(self.log)
+        sig.result.connect(self._onEEPROMWrite)
+        sig.finished.connect(self._onEEPROMWriteFinished)
+        self.pool.start(RunTaskJob(cmd, self.t, sig))
 
     def saveEEPROM(self):
         if self.eeprom:
@@ -192,6 +193,17 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 self.log(f"EEPROM saved to {path}")
         else:
             self.log("No EEPROM loaded")
+
+    def _onUnmarry(self, out: str):
+        if not "UNMARRY_RC=0" in out:
+            self.log(f"Unmarry failed! Response:\n{out}")
+            return
+
+        self.log("Unmarry succeeded, rebooting")
+        self.reboot()
+
+    def _onUnmarryFinished(self):
+        self.unmarryBtn.setEnabled(True)
 
     def unmarry(self):
         if not self.t.dev:
@@ -232,14 +244,23 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             'readeeprom -s -i -k -f)'
         )
 
-        self.t.send(runtask(cmd))
-        res = get_stdout(self.t.recv_until_finish())
-        if not "UNMARRY_RC=0" in res:
-            self.log(f"Unmarry failed! Response:\n{res}")
-            return
+        self.unmarryBtn.setEnabled(False)
 
-        self.log("Unmarry succeeded, rebooting")
-        self.reboot()
+        sig = RunTaskSignals()
+        sig.error.connect(self.log)
+        sig.result.connect(self._onUnmarry)
+        sig.finished.connect(self._onUnmarryFinished)
+        self.pool.start(RunTaskJob(cmd, self.t, sig))
+
+    def _onUpdateInitSerial(self, out: str):
+        if "RC=0" in out:
+            self.log("Original serial number updated")
+            self.readEEPROM()
+        else:
+            self.log("Failed to update original serial number")
+
+    def _onUpdateInitSerialFinished(self):
+        self.updateInitSerialBtn.setEnabled(True)
 
     def updateInitSerial(self):
         reply = QMessageBox.question(self, "Confirm Update",
@@ -249,15 +270,13 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         if reply != QMessageBox.StandardButton.Yes:
             return
 
-        self.t.send(runtask("about=;writeeeprom --quiet -I;echo RC=$?"))
-        rc = get_stdout(self.t.recv_until_finish())
-        if rc.splitlines()[0].split("=")[1] == "0":
-            self.log("Original serial number updated")
-            self.t.send(runtask("about=;readeeprom"))
-            self.eeprom = dict(l.split("=", 1) for l in get_stdout(self.t.recv_until_finish()).splitlines() if "=" in l)
-            self.updateEEPROMFields()
-        else:
-            self.log("Failed to update original serial number")
+        self.updateInitSerialBtn.setEnabled(False)
+
+        sig = RunTaskSignals()
+        sig.error.connect(self.log)
+        sig.result.connect(self._onUpdateInitSerial)
+        sig.finished.connect(self._onUpdateInitSerialFinished)
+        self.pool.start(RunTaskJob("writeeeprom --quiet -I;echo RC=$?", self.t, sig))
 
     def reboot(self):
         if self.t.dev:
@@ -460,27 +479,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.fileTree.refresh(self.fileTree.selected_item().parent())
         else:
             self.log(f"Failed to rename {path} (read-only?)")
-
-        # path = self.fileTree.selected_abs()
-        # if path is None:
-        #     return
-        # name, ok = QInputDialog.getText(self, "Rename File", "New name:", text=os.path.basename(path))
-        # if not ok or not name or "/" in name:
-        #     return
-        # newPath = posixpath.join(posixpath.dirname(path), name)
-        # cmd = (f"about=;ap_mount --remount=rw || exit 1;"
-        #        f"if [ -e {shlex.quote(newPath)} ]; then rc=2;"
-        #        f"else mv {shlex.quote(path)} {shlex.quote(newPath)}; rc=$?; fi;"
-        #        f"ap_mount --remount=ro; echo RC=$rc")
-        # self.t.send(runtask(cmd))
-        # rc = get_stdout(self.t.recv_until_finish())
-        # if "RC=0" in rc:
-        #     self.log(f"Renamed to {newPath}")
-        #     self.fileTree.refresh(self.fileTree.selected_item().parent(), select_name=name)
-        # elif "RC=2" in rc:
-        #     self.log(f"Rename failed: {newPath} already exists")
-        # else:
-        #     self.log("Rename failed")
 
     def deleteFile(self):
         if self.fileTree.is_root():
