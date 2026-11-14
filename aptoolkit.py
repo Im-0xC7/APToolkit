@@ -575,6 +575,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             if ver not in dedup:
                 dedup.append(ver)
 
+        self.fwList.clear()
         self.fwList.addItems(dedup)
 
     def _onVersionsFinished(self):
