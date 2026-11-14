@@ -5,7 +5,7 @@ from PySide6.QtWidgets import QTreeWidget, QTreeWidgetItem
 import shiboken6
 
 PATH, ISDIR, LOADED, SELECT_NAME = Qt.ItemDataRole.UserRole, Qt.ItemDataRole.UserRole + 1, Qt.ItemDataRole.UserRole + 2, Qt.ItemDataRole.UserRole + 3
-PROTECTED_ABS = {"/", "/user", "/user/ap-user", "/user/ap-data", "/user/images", "/user/staging", "/user/tmp"}
+PROTECTED_ABS = { "/", "/user", "/user/ap-user", "/user/ap-data", "/user/images", "/user/staging", "/user/tmp", "/tmp" }
 
 def _alive(o): return shiboken6.isValid(o)
 
@@ -103,7 +103,7 @@ class FileTreeController(QObject):
         if item is None:
             item = self.selected_item()
         ab = self._abs_of(item)
-        return ab is not None and (ab == "/user" or ab.startswith("/user/"))
+        return ab is not None and (ab == "/user" or ab.startswith("/user/") or ab == "/tmp" or ab.startswith("/tmp/"))
 
     def is_protected(self, item=None):
         if item is None:

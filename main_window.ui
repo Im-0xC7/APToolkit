@@ -57,7 +57,7 @@
      <enum>QTabWidget::TabShape::Rounded</enum>
     </property>
     <property name="currentIndex">
-     <number>2</number>
+     <number>3</number>
     </property>
     <property name="elideMode">
      <enum>Qt::TextElideMode::ElideNone</enum>
@@ -1143,6 +1143,115 @@
       </property>
       <property name="text">
        <string>Clear Output</string>
+      </property>
+     </widget>
+    </widget>
+    <widget class="QWidget" name="firmware">
+     <attribute name="title">
+      <string>Firmware</string>
+     </attribute>
+     <widget class="QPushButton" name="downloadFwBtn">
+      <property name="geometry">
+       <rect>
+        <x>145</x>
+        <y>5</y>
+        <width>140</width>
+        <height>30</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>Download Firmware</string>
+      </property>
+     </widget>
+     <widget class="QComboBox" name="fwList">
+      <property name="geometry">
+       <rect>
+        <x>220</x>
+        <y>60</y>
+        <width>200</width>
+        <height>23</height>
+       </rect>
+      </property>
+     </widget>
+     <widget class="QLineEdit" name="fwPartNum">
+      <property name="geometry">
+       <rect>
+        <x>10</x>
+        <y>60</y>
+        <width>200</width>
+        <height>23</height>
+       </rect>
+      </property>
+      <property name="placeholderText">
+       <string>AP3-SUB-001</string>
+      </property>
+     </widget>
+     <widget class="QLabel" name="fwPartNumLabel">
+      <property name="geometry">
+       <rect>
+        <x>10</x>
+        <y>40</y>
+        <width>200</width>
+        <height>17</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>Part Number</string>
+      </property>
+     </widget>
+     <widget class="QLabel" name="fwListLabel">
+      <property name="geometry">
+       <rect>
+        <x>220</x>
+        <y>40</y>
+        <width>200</width>
+        <height>17</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>Firmware Version</string>
+      </property>
+     </widget>
+     <widget class="QPushButton" name="getVersionsBtn">
+      <property name="geometry">
+       <rect>
+        <x>5</x>
+        <y>5</y>
+        <width>140</width>
+        <height>30</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>Get Versions</string>
+      </property>
+     </widget>
+     <widget class="QPushButton" name="installFwBtn">
+      <property name="geometry">
+       <rect>
+        <x>285</x>
+        <y>5</y>
+        <width>140</width>
+        <height>30</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>Install Firmware</string>
+      </property>
+     </widget>
+     <widget class="QCheckBox" name="wipeData">
+      <property name="geometry">
+       <rect>
+        <x>430</x>
+        <y>10</y>
+        <width>80</width>
+        <height>22</height>
+       </rect>
+      </property>
+      <property name="toolTip">
+       <string>Highly recommended when downgrading or switching models</string>
+      </property>
+      <property name="text">
+       <string>Wipe Data</string>
       </property>
      </widget>
     </widget>

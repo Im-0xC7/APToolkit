@@ -1,9 +1,8 @@
-import os
 import sys
 import posixpath
 import signal
 
-from PySide6.QtCore import Signal, QRunnable, QObject, QThreadPool, QTimer
+from PySide6.QtCore import QThreadPool, QTimer
 from PySide6.QtWidgets import QApplication, QMainWindow, QFileDialog, QMessageBox, QHeaderView, QInputDialog
 from usbmonitor import USBMonitor
 from usbmonitor.attributes import ID_MODEL_ID, ID_VENDOR_ID
@@ -12,38 +11,11 @@ from datetime import datetime
 from apsh.apsh import ShellWorker, ShellSignals
 from transport import *
 from filetree import FileTreeController
+from jobs import *
 
 import ap_serial
 
 from main_window import Ui_MainWindow
-
-class RunTaskSignals(QObject):
-    result = Signal(str)
-    error = Signal(str)
-    finished = Signal()
-
-class RunTaskJob(QRunnable):
-    def __init__(self, cmd: str, t: Transport, sig: RunTaskSignals):
-        super().__init__()
-        self.cmd = cmd
-        self.t = t
-        self.sig = sig
-
-    def run(self):
-        if not self.t.dev:
-            self.sig.error.emit("No device connected")
-            return
-
-        if not self.cmd.startswith("about=;"):
-            self.cmd = "about=;" + self.cmd
-
-        try:
-            self.t.send(runtask(self.cmd))
-            self.sig.result.emit(get_stdout(self.t.recv_until_finish()))
-        except Exception as e:
-            self.sig.error.emit(str(e))
-
-        self.sig.finished.emit()
 
 class MainWindow(QMainWindow, Ui_MainWindow):
     deviceConnected = Signal(str, object)
@@ -86,12 +58,17 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.createDirBtn.clicked.connect(self.createDir)
         self.renameBtn.clicked.connect(self.renameFile)
         self.deleteBtn.clicked.connect(self.deleteFile)
-        self.lastDir = os.path.curdir
+        self.lastDir = Path.cwd()
 
         # Shell
         self.startShellBtn.clicked.connect(self.startShell)
         self.stopShellBtn.clicked.connect(self.stopShell)
         self.clearShellOutputBtn.clicked.connect(self.clearShellOutput)
+
+        # Firmware
+        self.getVersionsBtn.clicked.connect(self.getVersions)
+        self.downloadFwBtn.clicked.connect(self.downloadFirmware)
+        self.installFwBtn.clicked.connect(self.installFirmware)
 
         self.tabWidget.setCurrentIndex(0)
 
@@ -114,6 +91,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
     def log(self, text):
         self.output.appendPlainText(f"[{datetime.now().strftime('%H:%M:%S')}] {text}")
+
+    def err(self, text):
+        self.output.appendPlainText(f"[{datetime.now().strftime('%H:%M:%S')}] [error] {text}")
 
     def usbConnected(self, _, info):
         if info[ID_VENDOR_ID] == f"{VID:04x}" and info[ID_MODEL_ID] == f"{PID:04x}":
@@ -141,7 +121,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.readEEPROMBtn.setEnabled(False)
 
         sig = RunTaskSignals()
-        sig.error.connect(self.log)
+        sig.error.connect(self.err)
         sig.result.connect(self._onEEPROMRead)
         sig.finished.connect(self._onEEPROMReadFinished)
         self.pool.start(RunTaskJob("(readeeprom; if [ -e /user/ap-data/user_vin ]; then VIN=$(cat /user/ap-data/user_vin); else VIN=Unknown; fi; echo VIN=$VIN)", self.t, sig))
@@ -187,14 +167,14 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.writeEEPROMBtn.setEnabled(False)
 
         sig = RunTaskSignals()
-        sig.error.connect(self.log)
+        sig.error.connect(self.err)
         sig.result.connect(self._onEEPROMWrite)
         sig.finished.connect(self._onEEPROMWriteFinished)
         self.pool.start(RunTaskJob(cmd, self.t, sig))
 
     def saveEEPROM(self):
         if self.eeprom:
-            path, _ = QFileDialog.getSaveFileName(self, "Save EEPROM File", "eeprom.txt", "Text Files (*.txt);;All Files (*)")
+            path, _ = QFileDialog.getSaveFileName(self, "Save EEPROM File", str(Path(self.lastDir) / "eeprom.txt"), "Text Files (*.txt);;All Files (*)")
             if path:
                 with open(path, "w") as f:
                     f.write("\n".join(f"{k}={v}" for k, v in self.eeprom.items()))
@@ -255,7 +235,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.unmarryBtn.setEnabled(False)
 
         sig = RunTaskSignals()
-        sig.error.connect(self.log)
+        sig.error.connect(self.err)
         sig.result.connect(self._onUnmarry)
         sig.finished.connect(self._onUnmarryFinished)
         self.pool.start(RunTaskJob(cmd, self.t, sig))
@@ -281,7 +261,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.updateInitSerialBtn.setEnabled(False)
 
         sig = RunTaskSignals()
-        sig.error.connect(self.log)
+        sig.error.connect(self.err)
         sig.result.connect(self._onUpdateInitSerial)
         sig.finished.connect(self._onUpdateInitSerialFinished)
         self.pool.start(RunTaskJob("writeeeprom --quiet -I;echo RC=$?", self.t, sig))
@@ -424,10 +404,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         if path is None:
             return
         name = path.rsplit("/", 1)[-1]
-        local, _ = QFileDialog.getSaveFileName(self, "Save File", os.path.join(self.lastDir, name))
+        local, _ = QFileDialog.getSaveFileName(self, "Save File", str(Path(self.lastDir) / name))
         if not local:
             return
-        self.lastDir = os.path.dirname(local)
+        self.lastDir = Path(local).parent
         try:
             data = self.t.get_file(path, name)
             with open(local, "wb") as f:
@@ -440,11 +420,11 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         path = self.fileTree.selected_dir()
         if path is None:
             return
-        local, _ = QFileDialog.getOpenFileName(self, "Upload File", os.path.join(self.lastDir, path))
+        local, _ = QFileDialog.getOpenFileName(self, "Upload File", str(Path(self.lastDir) / path))
         if not local:
             return
-        self.lastDir = os.path.dirname(local)
-        name = os.path.basename(local)
+        self.lastDir = Path(local).parent
+        name = Path(local).name
         dest = posixpath.join(path, name)
         absPath = posixpath.join(self.fileTree.selected_abs(), name)
         try:
@@ -478,7 +458,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         path = self.fileTree.selected_path()
         if path is None:
             return
-        name, ok = QInputDialog.getText(self, "Rename File", "New name:", text=os.path.basename(path))
+        name, ok = QInputDialog.getText(self, "Rename File", "New name:", text=Path(path).name)
         if not ok or not name or "/" in name:
             return
         newPath = posixpath.join(str(posixpath.dirname(path)), name)
@@ -571,6 +551,77 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
     def clearShellOutput(self):
         self.shellOutput.clear()
+
+    def checkFwPartNum(self):
+        partNum = self.fwPartNum.text()
+
+        match = re.match(r"^AP3-(AU-)?([A-Z]{3})-[0-9]{3}$", partNum)
+        manufs = [self.manuf.itemText(i) for i in range(self.manuf.count())]
+        if not match or match.group(2) not in manufs:
+            self.log("Invalid part number, check field and try again")
+            self.fwPartNum.selectAll()
+            return ""
+        return partNum
+
+    def _onVersionsResp(self, status: int, output: str):
+        if status != 200:
+            self.log(f"Couldn't find firmware, check part number and try again")
+            self.fwPartNum.selectAll()
+            return
+
+        vers = re.findall(r"1.[7-8]\.[0-9]\.[0-9]-[0-9]+", output)
+        dedup = []
+        for ver in vers:
+            if ver not in dedup:
+                dedup.append(ver)
+
+        self.fwList.addItems(dedup)
+
+    def _onVersionsFinished(self):
+        self.getVersionsBtn.setEnabled(True)
+
+    def getVersions(self):
+        partNum = self.checkFwPartNum()
+        if not partNum:
+            return
+
+        self.getVersionsBtn.setEnabled(False)
+        self.log(f"Getting firmware versions for {partNum}")
+
+        sig = RequestSignals()
+        sig.result.connect(self._onVersionsResp)
+        sig.error.connect(self.err)
+        sig.finished.connect(self._onVersionsFinished)
+        self.pool.start(RequestJob(f"http://static.cobbtuning.com/support/releasenotes/{partNum}.html", sig))
+
+    def _onFwDownloadFinished(self):
+        self.downloadFwBtn.setEnabled(True)
+
+    def downloadFirmware(self):
+        partNum = self.checkFwPartNum()
+        if not partNum:
+            return
+
+        ver = self.fwList.currentText()
+        if not ver:
+            self.log("No version selected, get versions first and try again")
+            return
+
+        path = QFileDialog.getExistingDirectory(self, "Select output directory", str(self.lastDir))
+        if not path:
+            return
+
+        self.downloadFwBtn.setEnabled(False)
+        self.log(f"Downloading firmware {ver} for {partNum}")
+
+        sig = FwDownloadSignals()
+        sig.progress.connect(self.log)
+        sig.error.connect(self.err)
+        sig.finished.connect(self._onFwDownloadFinished)
+        self.pool.start(FwDownloadJob(partNum.replace("AP3", "AP"), ver, path, sig))
+
+    def installFirmware(self):
+        pass
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)

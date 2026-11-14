@@ -15,10 +15,10 @@ from PySide6.QtGui import (QBrush, QColor, QConicalGradient, QCursor,
     QFont, QFontDatabase, QGradient, QIcon,
     QImage, QKeySequence, QLinearGradient, QPainter,
     QPalette, QPixmap, QRadialGradient, QTransform)
-from PySide6.QtWidgets import (QApplication, QComboBox, QFrame, QHeaderView,
-    QLabel, QLineEdit, QMainWindow, QPlainTextEdit,
-    QPushButton, QSizePolicy, QTabWidget, QToolButton,
-    QTreeWidget, QTreeWidgetItem, QWidget)
+from PySide6.QtWidgets import (QApplication, QCheckBox, QComboBox, QFrame,
+    QHeaderView, QLabel, QLineEdit, QMainWindow,
+    QPlainTextEdit, QPushButton, QSizePolicy, QTabWidget,
+    QToolButton, QTreeWidget, QTreeWidgetItem, QWidget)
 
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
@@ -312,6 +312,33 @@ class Ui_MainWindow(object):
         self.clearShellOutputBtn.setEnabled(True)
         self.clearShellOutputBtn.setGeometry(QRect(5, 65, 120, 30))
         self.tabWidget.addTab(self.shell, "")
+        self.firmware = QWidget()
+        self.firmware.setObjectName(u"firmware")
+        self.downloadFwBtn = QPushButton(self.firmware)
+        self.downloadFwBtn.setObjectName(u"downloadFwBtn")
+        self.downloadFwBtn.setGeometry(QRect(145, 5, 140, 30))
+        self.fwList = QComboBox(self.firmware)
+        self.fwList.setObjectName(u"fwList")
+        self.fwList.setGeometry(QRect(220, 60, 200, 23))
+        self.fwPartNum = QLineEdit(self.firmware)
+        self.fwPartNum.setObjectName(u"fwPartNum")
+        self.fwPartNum.setGeometry(QRect(10, 60, 200, 23))
+        self.fwPartNumLabel = QLabel(self.firmware)
+        self.fwPartNumLabel.setObjectName(u"fwPartNumLabel")
+        self.fwPartNumLabel.setGeometry(QRect(10, 40, 200, 17))
+        self.fwListLabel = QLabel(self.firmware)
+        self.fwListLabel.setObjectName(u"fwListLabel")
+        self.fwListLabel.setGeometry(QRect(220, 40, 200, 17))
+        self.getVersionsBtn = QPushButton(self.firmware)
+        self.getVersionsBtn.setObjectName(u"getVersionsBtn")
+        self.getVersionsBtn.setGeometry(QRect(5, 5, 140, 30))
+        self.installFwBtn = QPushButton(self.firmware)
+        self.installFwBtn.setObjectName(u"installFwBtn")
+        self.installFwBtn.setGeometry(QRect(285, 5, 140, 30))
+        self.wipeData = QCheckBox(self.firmware)
+        self.wipeData.setObjectName(u"wipeData")
+        self.wipeData.setGeometry(QRect(430, 10, 80, 22))
+        self.tabWidget.addTab(self.firmware, "")
         self.output = QPlainTextEdit(self.centralwidget)
         self.output.setObjectName(u"output")
         self.output.setGeometry(QRect(0, 290, 830, 210))
@@ -328,7 +355,7 @@ class Ui_MainWindow(object):
 
         self.retranslateUi(MainWindow)
 
-        self.tabWidget.setCurrentIndex(2)
+        self.tabWidget.setCurrentIndex(3)
         self.state.setCurrentIndex(-1)
         self.cm1State.setCurrentIndex(-1)
         self.lock.setCurrentIndex(-1)
@@ -450,5 +477,16 @@ class Ui_MainWindow(object):
         self.stopShellBtn.setText(QCoreApplication.translate("MainWindow", u"Stop Shell", None))
         self.clearShellOutputBtn.setText(QCoreApplication.translate("MainWindow", u"Clear Output", None))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.shell), QCoreApplication.translate("MainWindow", u"Shell", None))
+        self.downloadFwBtn.setText(QCoreApplication.translate("MainWindow", u"Download Firmware", None))
+        self.fwPartNum.setPlaceholderText(QCoreApplication.translate("MainWindow", u"AP3-SUB-001", None))
+        self.fwPartNumLabel.setText(QCoreApplication.translate("MainWindow", u"Part Number", None))
+        self.fwListLabel.setText(QCoreApplication.translate("MainWindow", u"Firmware Version", None))
+        self.getVersionsBtn.setText(QCoreApplication.translate("MainWindow", u"Get Versions", None))
+        self.installFwBtn.setText(QCoreApplication.translate("MainWindow", u"Install Firmware", None))
+#if QT_CONFIG(tooltip)
+        self.wipeData.setToolTip(QCoreApplication.translate("MainWindow", u"Highly recommended when downgrading or switching models", None))
+#endif // QT_CONFIG(tooltip)
+        self.wipeData.setText(QCoreApplication.translate("MainWindow", u"Wipe Data", None))
+        self.tabWidget.setTabText(self.tabWidget.indexOf(self.firmware), QCoreApplication.translate("MainWindow", u"Firmware", None))
     # retranslateUi
 
