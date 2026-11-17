@@ -1248,10 +1248,26 @@
        </rect>
       </property>
       <property name="toolTip">
-       <string>Highly recommended when downgrading or switching models</string>
+       <string>Highly recommended when downgrading or switching models. Has no effect when Verify Only is checked</string>
       </property>
       <property name="text">
        <string>Wipe Data</string>
+      </property>
+     </widget>
+     <widget class="QCheckBox" name="verifyOnly">
+      <property name="geometry">
+       <rect>
+        <x>515</x>
+        <y>10</y>
+        <width>85</width>
+        <height>22</height>
+       </rect>
+      </property>
+      <property name="toolTip">
+       <string>Compares the installed firmware's hashes to the supplied firmware then reboots without flashing</string>
+      </property>
+      <property name="text">
+       <string>Verify Only</string>
       </property>
      </widget>
     </widget>

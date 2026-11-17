@@ -4,7 +4,7 @@ from pathlib import Path
 import usb.util
 from PySide6.QtCore import QObject, Signal, QRunnable
 
-from transport import Transport, runtask
+from transport import Transport
 
 EOT, RESET = 0x04, 0x12
 
@@ -41,8 +41,7 @@ class ShellWorker(QRunnable):
                     if not self.t.put_file(f.read(), "../../tmp/apsh.sh"):
                         self.sig.output.emit("\nFailed to push apsh.sh to /tmp")
                         return
-            self.t.send(runtask("about=;sh /tmp/apsh.sh </dev/null >/dev/null 2>&1 &"))
-            self.t.recv_until_finish()
+            self.t.runtask("about=;sh /tmp/apsh.sh </dev/null >/dev/null 2>&1 &")
 
             time.sleep(0.5)
 

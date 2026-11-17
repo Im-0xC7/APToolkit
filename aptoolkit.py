@@ -9,6 +9,7 @@ from usbmonitor.attributes import ID_MODEL_ID, ID_VENDOR_ID
 from datetime import datetime
 
 from apsh.apsh import ShellWorker, ShellSignals
+from apupdater import UpdaterSignals, UpdaterJob
 from transport import *
 from filetree import FileTreeController
 from jobs import *
@@ -76,6 +77,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.apsh = None
         self.apshSig = None
 
+        self.updJob = None
+
     def showEvent(self, event):
         for _, info in self.monitor.get_available_devices().items():
             self.usbConnected(_, info)
@@ -87,6 +90,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 self.apsh.stopped = True
                 self.pool.waitForDone(5000)
         self.t.close()
+        if self.updJob:
+            self.updJob.deliver(False)
         event.accept()
 
     def log(self, text):
@@ -96,14 +101,14 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.output.appendPlainText(f"[{datetime.now().strftime('%H:%M:%S')}] [error] {text}")
 
     def usbConnected(self, _, info):
-        if info[ID_VENDOR_ID] == f"{VID:04x}" and info[ID_MODEL_ID] == f"{PID:04x}":
+        if info[ID_VENDOR_ID] == f"{VID:04x}" and info[ID_MODEL_ID] == f"{PID:04x}" and not self.updJob:
             self.t.open()
             self.t.handshake()
             self.log("Accessport connected")
             self.fileTree.populate([("/", "../..")])
 
     def usbDisconnected(self, _, info):
-        if info[ID_VENDOR_ID] == f"{VID:04x}" and info[ID_MODEL_ID] == f"{PID:04x}":
+        if info[ID_VENDOR_ID] == f"{VID:04x}" and info[ID_MODEL_ID] == f"{PID:04x}" and not self.updJob:
             self.t.close(False)
             self.fileTreeView.clear()
             self.updateFileButtons(None, False, False)
@@ -555,7 +560,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     def checkFwPartNum(self):
         partNum = self.fwPartNum.text()
 
-        match = re.match(r"^AP3-(AU-)?([A-Z]{3})-[0-9]{3}$", partNum)
+        match = re.match(r"^AP3-(AU-)?([A-Z]{3})-\d{3}$", partNum)
         manufs = [self.manuf.itemText(i) for i in range(self.manuf.count())]
         if not match or match.group(2) not in manufs:
             self.log("Invalid part number, check field and try again")
@@ -569,7 +574,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.fwPartNum.selectAll()
             return
 
-        vers = re.findall(r"1.[7-8]\.[0-9]\.[0-9]-[0-9]+", output)
+        vers = re.findall(r"1.[7-8]\.\d\.\d-\d+", output)
         dedup = []
         for ver in vers:
             if ver not in dedup:
@@ -621,8 +626,28 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         sig.finished.connect(self._onFwDownloadFinished)
         self.pool.start(FwDownloadJob(partNum.replace("AP3", "AP"), ver, path, sig))
 
+    def _confirmFlash(self):
+        resp, ok = QInputDialog.getText(self, "Confirm Flash", "Updater ready, type FLASH to proceed")
+        self.updJob.deliver(ok and resp == "FLASH")
+
+    def _onInstallFinished(self):
+        self.tabWidget.setEnabled(True)
+        self.updJob = None
+
     def installFirmware(self):
-        pass
+        path = QFileDialog.getExistingDirectory(self, "Select firmware directory", str(self.lastDir))
+        if not path:
+            return
+
+        self.tabWidget.setEnabled(False)
+
+        sig = UpdaterSignals()
+        sig.progress.connect(self.log)
+        sig.error.connect(self.err)
+        sig.finished.connect(self._onInstallFinished)
+        sig.askFlash.connect(self._confirmFlash)
+        self.updJob = UpdaterJob(Path(path), self.wipeData.isChecked(), self.verifyOnly.isChecked(), self.t, sig, self)
+        self.pool.start(self.updJob)
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)

@@ -1,13 +1,11 @@
 import hashlib
 import re
 from pathlib import Path
+from urllib import request
 
-import requests
 from PySide6.QtCore import QObject, Signal, QRunnable
-from requests import RequestException
 
-from transport import Transport, runtask, get_stdout
-
+from transport import Transport
 
 class RunTaskSignals(QObject):
     result = Signal(str)
@@ -30,8 +28,7 @@ class RunTaskJob(QRunnable):
             if not self.cmd.startswith("about=;"):
                 self.cmd = "about=;" + self.cmd
 
-            self.t.send(runtask(self.cmd))
-            self.sig.result.emit(get_stdout(self.t.recv_until_finish()))
+            self.sig.result.emit(self.t.runtask(self.cmd))
         except Exception as e:
             self.sig.error.emit(str(e))
         finally:
@@ -50,10 +47,10 @@ class RequestJob(QRunnable):
 
     def run(self):
         try:
-            resp = requests.get(self.url)
-            self.sig.result.emit(resp.status_code, resp.text)
-        except RequestException as e:
-            self.sig.error.emit(e)
+            with request.urlopen(self.url) as resp:
+                self.sig.result.emit(resp.status, resp.read().decode())
+        except Exception as e:
+            self.sig.error.emit(str(e))
         finally:
             self.sig.finished.emit()
 
@@ -72,33 +69,43 @@ class FwDownloadJob(QRunnable):
 
     def run(self):
         try:
-            url = f"http://www.accessecu.com/support/accessport/{self.model}/{self.version}"
-            meta = requests.get(f"{url}/version_v3.txt")
-            if not meta.ok:
-                self.sig.error.emit(f"Requested model/version combination doesn't exist")
-                return
-
-            outDir = Path(self.outDir) / f"{self.model}_{self.version}"
-            if Path.is_dir(outDir):
-                self.sig.error.emit(f"Output directory {outDir} already exists")
-                return
-
-            Path.mkdir(outDir)
-
-            for file in re.findall(r"([a-fA-F0-9]{32})\s\*(.+)", meta.text):
-                self.sig.progress.emit(f"Downloading {file[1]}")
-                resp = requests.get(f"http://www.accessecu.com/support/accessport/{self.model}/{self.version}/{file[1]}")
-                if not resp.ok:
-                    self.sig.error.emit(f"Failed to download {file[1]}!")
-                    continue
-                with open(f"{outDir}/{file[1]}", "wb") as f:
-                    f.write(resp.content)
-                with open(f"{outDir}/{file[1]}", "rb") as f:
-                    if hashlib.file_digest(f, "md5").hexdigest() != file[0]:
-                        self.sig.error.emit(f"Hash mismatch on {file[1]}!")
+            outDir = dlFirmware(self.model, self.version, self.outDir, self.sig)
 
             self.sig.progress.emit(f"Finished downloading firmware to {outDir}")
-        except RequestException as e:
-            self.sig.error.emit(e)
+        except Exception as e:
+            self.sig.error.emit(str(e))
         finally:
             self.sig.finished.emit()
+
+def dlFirmware(model: str, version: str, outDir: str, sig: FwDownloadSignals):
+    url = f"http://www.accessecu.com/support/accessport/{model}{("/" + version) if version else ""}"
+    meta = request.urlopen(f"{url}/version_v3.txt")
+    if meta.status != 200:
+        raise RuntimeError("Requested model/version combination doesn't exist")
+
+    meta = meta.read().decode()
+
+    if not version:
+        version = meta.splitlines()[0].strip()
+
+    outDir = Path(outDir) / f"{model}_{version}"
+    if Path.is_dir(outDir):
+        raise RuntimeError(f"Output directory {outDir} already exists")
+
+    Path.mkdir(outDir)
+
+    for file in re.findall(r"([a-fA-F0-9]{32})\s\*(.+)", meta):
+        sig.progress.emit(f"Downloading {file[1]}")
+        resp = request.urlopen(f"http://www.accessecu.com/support/accessport/{model}/{version}/{file[1]}")
+        if resp.status != 200:
+            raise RuntimeError(f"Failed to download {file[1]}")
+        with open(f"{outDir}/{file[1]}", "wb") as f:
+            f.write(resp.read())
+        with open(f"{outDir}/{file[1]}", "rb") as f:
+            if hashlib.file_digest(f, "md5").hexdigest() != file[0]:
+                raise RuntimeError(f"MD5 mismatch on {file[1]}")
+
+    with open(f"{outDir}/version_v3.txt", "w") as f:
+        f.write(meta)
+
+    return outDir
