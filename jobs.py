@@ -57,7 +57,7 @@ class RequestJob(QRunnable):
 class FwDownloadSignals(QObject):
     progress = Signal(str)
     error = Signal(str)
-    finished = Signal()
+    finished = Signal(str)
 
 class FwDownloadJob(QRunnable):
     def __init__(self, model: str, version: str, outDir: str, sig: FwDownloadSignals):
@@ -68,14 +68,15 @@ class FwDownloadJob(QRunnable):
         self.sig = sig
 
     def run(self):
+        fwDir = None
         try:
-            outDir = dlFirmware(self.model, self.version, self.outDir, self.sig)
+            fwDir = dlFirmware(self.model, self.version, self.outDir, self.sig)
 
-            self.sig.progress.emit(f"Finished downloading firmware to {outDir}")
+            self.sig.progress.emit(f"Finished downloading firmware to {fwDir}")
         except Exception as e:
             self.sig.error.emit(str(e))
         finally:
-            self.sig.finished.emit()
+            self.sig.finished.emit(str(fwDir) if fwDir else None)
 
 def dlFirmware(model: str, version: str, outDir: str, sig: FwDownloadSignals):
     url = f"http://www.accessecu.com/support/accessport/{model}{("/" + version) if version else ""}"
@@ -92,7 +93,7 @@ def dlFirmware(model: str, version: str, outDir: str, sig: FwDownloadSignals):
     if Path.is_dir(outDir):
         raise RuntimeError(f"Output directory {outDir} already exists")
 
-    Path.mkdir(outDir)
+    outDir.mkdir()
 
     for file in re.findall(r"([a-fA-F0-9]{32})\s\*(.+)", meta):
         sig.progress.emit(f"Downloading {file[1]}")

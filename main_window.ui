@@ -1166,9 +1166,9 @@
      <widget class="QComboBox" name="fwList">
       <property name="geometry">
        <rect>
-        <x>220</x>
+        <x>140</x>
         <y>60</y>
-        <width>200</width>
+        <width>120</width>
         <height>23</height>
        </rect>
       </property>
@@ -1178,7 +1178,7 @@
        <rect>
         <x>10</x>
         <y>60</y>
-        <width>200</width>
+        <width>120</width>
         <height>23</height>
        </rect>
       </property>
@@ -1191,7 +1191,7 @@
        <rect>
         <x>10</x>
         <y>40</y>
-        <width>200</width>
+        <width>120</width>
         <height>17</height>
        </rect>
       </property>
@@ -1202,9 +1202,9 @@
      <widget class="QLabel" name="fwListLabel">
       <property name="geometry">
        <rect>
-        <x>220</x>
+        <x>140</x>
         <y>40</y>
-        <width>200</width>
+        <width>120</width>
         <height>17</height>
        </rect>
       </property>
@@ -1268,6 +1268,45 @@
       </property>
       <property name="text">
        <string>Verify Only</string>
+      </property>
+     </widget>
+     <widget class="QLineEdit" name="fwPath">
+      <property name="geometry">
+       <rect>
+        <x>270</x>
+        <y>60</y>
+        <width>400</width>
+        <height>23</height>
+       </rect>
+      </property>
+      <property name="placeholderText">
+       <string/>
+      </property>
+     </widget>
+     <widget class="QLabel" name="fwPathLabel">
+      <property name="geometry">
+       <rect>
+        <x>270</x>
+        <y>40</y>
+        <width>382</width>
+        <height>17</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>Firmware Path</string>
+      </property>
+     </widget>
+     <widget class="QToolButton" name="fwPathBtn">
+      <property name="geometry">
+       <rect>
+        <x>675</x>
+        <y>60</y>
+        <width>23</width>
+        <height>23</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>...</string>
       </property>
      </widget>
     </widget>

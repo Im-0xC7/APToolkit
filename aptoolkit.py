@@ -70,6 +70,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.getVersionsBtn.clicked.connect(self.getVersions)
         self.downloadFwBtn.clicked.connect(self.downloadFirmware)
         self.installFwBtn.clicked.connect(self.installFirmware)
+        self.fwPathBtn.clicked.connect(self.chooseFwPath)
 
         self.tabWidget.setCurrentIndex(0)
 
@@ -89,9 +90,17 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             if not self.pool.waitForDone(8000):
                 self.apsh.stopped = True
                 self.pool.waitForDone(5000)
-        self.t.close()
         if self.updJob:
-            self.updJob.deliver(False)
+            reply = QMessageBox.question(self, "Update in Progress",
+                                         "Are you sure you want to quit?\nThis could risk a potential brick!",
+                                         QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                                         QMessageBox.StandardButton.No)
+            if reply != QMessageBox.StandardButton.Yes:
+                event.ignore()
+                return
+            # self.updJob.deliver(False)
+
+        self.t.close()
         event.accept()
 
     def log(self, text):
@@ -135,14 +144,14 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         if "RC=0" in out:
             self.log("EEPROM written successfully")
         else:
-            self.log("EEPROM write unsuccessful, check fields and try again")
+            self.err("EEPROM write unsuccessful, check fields and try again")
 
     def _onEEPROMWriteFinished(self):
         self.writeEEPROMBtn.setEnabled(True)
 
     def writeEEPROM(self):
         if not self.validateEEPROMFields():
-            self.log("Check the highlighted field and try again")
+            self.err("Check the highlighted field and try again")
             return
 
         reply = QMessageBox.question(self, "Confirm EEPROM Write",
@@ -185,7 +194,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                     f.write("\n".join(f"{k}={v}" for k, v in self.eeprom.items()))
                 self.log(f"EEPROM saved to {path}")
         else:
-            self.log("No EEPROM loaded")
+            self.err("No EEPROM loaded")
 
     def _onUnmarry(self, out: str):
         if not "UNMARRY_RC=0" in out:
@@ -200,7 +209,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
     def unmarry(self):
         if not self.t.dev:
-            self.log("No device connected")
+            self.err("No device connected")
             return
 
         reply = QMessageBox.question(self, "Confirm Unmarry",
@@ -250,7 +259,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.log("Original serial number updated")
             self.readEEPROM()
         else:
-            self.log("Failed to update original serial number")
+            self.err("Failed to update original serial number")
 
     def _onUpdateInitSerialFinished(self):
         self.updateInitSerialBtn.setEnabled(True)
@@ -276,7 +285,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.t.send(frame(0x18))
             self.t.drain()
         else:
-            self.log("No device connected")
+            self.err("No device connected")
 
     def updateEEPROMFields(self):
         self.manuf.setCurrentIndex(self.manuf.findText(self.eeprom["AP_MANUF"]))
@@ -297,6 +306,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.vehicle.setText(self.eeprom["AP_VEHICLE"])
         self.cm1Vehicle.setText(self.eeprom["AP_CM1_VEHICLE"])
         self.vin.setText(self.eeprom["VIN"])
+
+        self.fwPartNum.setText(self.eeprom["AP_PART_NUM"])
 
     def validateEEPROMFields(self):
         # MANUF
@@ -419,7 +430,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 f.write(data)
             self.log(f"File saved to {local}")
         except Exception as e:
-            self.log(f"Download failed: {e}")
+            self.err(f"Download failed: {e}")
 
     def uploadFile(self):
         path = self.fileTree.selected_dir()
@@ -438,7 +449,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.log(f"File uploaded to {absPath}")
             self.fileTree.refresh(self.fileTree.selected_item(), select_name=name)
         except Exception as e:
-            self.log(f"Upload failed: {e}")
+            self.err(f"Upload failed: {e}")
 
     def createDir(self):
         path = self.fileTree.selected_path()
@@ -451,10 +462,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         temp = posixpath.join(dest, ".temp")
         absPath = posixpath.join(self.fileTree.selected_abs(), name)
         if not self.t.put_file(b"\x00", temp):
-            self.log(f"Failed to create directory {absPath} (read-only?)")
+            self.err(f"Failed to create directory {absPath} (read-only?)")
             return
         if not self.t.delete_file(temp):
-            self.log("Failed to delete temporary file after creating directory")
+            self.err("Failed to delete temporary file after creating directory")
             return
         self.log(f"Created directory {absPath}")
         self.fileTree.refresh(self.fileTree.selected_item(), select_name=name)
@@ -471,7 +482,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.log(f"Renamed {self.fileTree.selected_abs()} to {posixpath.normpath(posixpath.join("/user/ap-user", newPath))}")
             self.fileTree.refresh(self.fileTree.selected_item().parent())
         else:
-            self.log(f"Failed to rename {path} (read-only?)")
+            self.err(f"Failed to rename {path} (read-only?)")
 
     def deleteFile(self):
         if self.fileTree.is_root():
@@ -488,7 +499,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             return
 
         if not self.t.delete_file(path):
-            self.log(f"Failed to delete {absPath} (read-only or non-empty?)")
+            self.err(f"Failed to delete {absPath} (read-only or non-empty?)")
             return
         self.log(f"Deleted {absPath}")
         self.fileTree.refresh(self.fileTree.selected_item().parent())
@@ -563,14 +574,14 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         match = re.match(r"^AP3-(AU-)?([A-Z]{3})-\d{3}$", partNum)
         manufs = [self.manuf.itemText(i) for i in range(self.manuf.count())]
         if not match or match.group(2) not in manufs:
-            self.log("Invalid part number, check field and try again")
+            self.err("Invalid part number, check field and try again")
             self.fwPartNum.selectAll()
             return ""
         return partNum
 
     def _onVersionsResp(self, status: int, output: str):
         if status != 200:
-            self.log(f"Couldn't find firmware, check part number and try again")
+            self.err(f"Couldn't find firmware, check part number and try again")
             self.fwPartNum.selectAll()
             return
 
@@ -600,7 +611,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         sig.finished.connect(self._onVersionsFinished)
         self.pool.start(RequestJob(f"http://static.cobbtuning.com/support/releasenotes/{partNum}.html", sig))
 
-    def _onFwDownloadFinished(self):
+    def _onFwDownloadFinished(self, fwPath: str):
+        if fwPath:
+            self.fwPath.setText(fwPath)
         self.downloadFwBtn.setEnabled(True)
 
     def downloadFirmware(self):
@@ -610,7 +623,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
         ver = self.fwList.currentText()
         if not ver:
-            self.log("No version selected, get versions first and try again")
+            self.err("No version selected, get versions first and try again")
             return
 
         path = QFileDialog.getExistingDirectory(self, "Select output directory", str(self.lastDir))
@@ -635,8 +648,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.updJob = None
 
     def installFirmware(self):
-        path = QFileDialog.getExistingDirectory(self, "Select firmware directory", str(self.lastDir))
-        if not path:
+        path = self.fwPath.text()
+        if not path or not Path(path).is_dir():
+            self.err("Check firmware path and try again")
+            self.fwPath.selectAll()
             return
 
         self.tabWidget.setEnabled(False)
@@ -648,6 +663,11 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         sig.askFlash.connect(self._confirmFlash)
         self.updJob = UpdaterJob(Path(path), self.wipeData.isChecked(), self.verifyOnly.isChecked(), self.t, sig, self)
         self.pool.start(self.updJob)
+
+    def chooseFwPath(self):
+        path = QFileDialog.getExistingDirectory(self, "Select firmware directory", str(self.lastDir))
+        if path:
+            self.fwPath.setText(path)
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
