@@ -1,0 +1,47 @@
+name: Build Executables
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ windows-latest, macos-latest, ubuntu-latest ]
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.13'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt pyinstaller
+
+      - name: Build executable
+        shell: bash
+        run: |
+          EXTRA=""
+          SEP=":"
+          if [ "$RUNNER_OS" = "Windows" ]; then
+            SEP=";"
+          elif [ "$RUNNER_OS" = "macOS" ]; then
+            python -c "import sysconfig, sys; p=sysconfig.get_platform(); print('platform:', p); sys.exit(0 if 'universal2' in p else 1)"
+            EXTRA="--target-arch universal2"
+          fi
+          pyinstaller --onefile --noconsole --name aptoolkit $EXTRA \
+            --add-data "apsh/apsh${SEP}apsh" \
+            --add-data "apsh/apsh.sh${SEP}apsh" \
+            aptoolkit.py
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: aptoolkit-${{ runner.os }}
+          path: dist/
